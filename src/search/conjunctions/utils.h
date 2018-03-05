@@ -69,6 +69,20 @@ inline auto action_representative_edeletes_conjunction(const AbstractTask &task,
 	return std::any_of(std::begin(conjunction->facts), std::end(conjunction->facts), edeletes_fact);
 }
 
+inline auto action_representative_edeletes_fact(const AbstractTask &task, const FactSet &preconditions, const FactSet &effects, const FactPair &f) -> bool {
+	if (std::find(effects.begin(), effects.end(), f) != effects.end())
+		return false;
+	auto is_mutex_with_f = [&task, &f](const FactPair &g) { return task.are_facts_mutex(f, g); };
+	return std::any_of(preconditions.begin(), preconditions.end(), is_mutex_with_f) || std::any_of(effects.begin(), effects.end(), is_mutex_with_f);
+}
+
+inline auto action_representative_edeletes_conjunction(const AbstractTask &task, const FactSet &preconditions, const FactSet &effects, const Conjunction *conjunction) -> bool {
+	auto edeletes_fact = [&task, &preconditions, &effects](const FactPair &f) {
+		return action_representative_edeletes_fact(task, preconditions, effects, f);
+	};
+	return std::any_of(std::begin(conjunction->facts), std::end(conjunction->facts), edeletes_fact);
+}
+
 inline auto get_edeleted_facts(const AbstractTask &task, const BSGNode &bsg_node, const FactSet &facts) -> FactSet {
 	auto edeletes_fact = [&task, &bsg_node](const FactPair &f) {
 		return action_representative_edeletes_fact(task, bsg_node, f);

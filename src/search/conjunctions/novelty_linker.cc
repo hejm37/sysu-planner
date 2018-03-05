@@ -23,11 +23,9 @@ NoveltyLinker::NoveltyLinker(const Options &opts)
 	: Heuristic(opts) {
 	cout << "Linking novelty heuristics to the conjunctions heuristic..." << endl;
 	auto conjunctions_heuristic = static_cast<conjunctions::ConjunctionsHeuristic *>(opts.get<Heuristic *>("conjunctions_heuristic"));
-	conjunctions_heuristic->novelty_heuristics = get_novelty_heuristics(opts);
-	// if for some reason conjunctions were already added, update the novelty heuristics accordingly
-	for (auto conjunction_it = std::begin(conjunctions_heuristic->conjunctions) + conjunctions_heuristic->num_singletons; conjunction_it != std::end(conjunctions_heuristic->conjunctions); ++conjunction_it)
-		for (auto novelty_heuristic : conjunctions_heuristic->novelty_heuristics)
-			novelty_heuristic->add_conjunction((**conjunction_it).facts);
+	auto novelty_heuristics = get_novelty_heuristics(opts);
+	for (auto *novelty_heuristic : novelty_heuristics)
+		conjunctions_heuristic->subscribe(*novelty_heuristic);
 }
 
 int NoveltyLinker::compute_heuristic(const GlobalState &) {

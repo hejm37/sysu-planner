@@ -1063,7 +1063,7 @@ auto ConflictExtraction::ConflictExtractionHelper<ConflictType>::generate_candid
 						}
 						const auto path = construct_path(deleter, failed);
 						assert(!path.empty());
-						assert(path.size() - 1 == priority);
+						assert(static_cast<int>(path.size()) - 1 == priority);
 						// add the pair {p, q_n} as conflict where p is the deleted fact and q is the last label on the path from the deleter to the failed action
 						add_combined_conflict(conflicts[priority], *path.back(), *precondition.first, bsg.nodes[deleter], *first_deleted, deleter - failed, heuristic, online_scoring);
 					} else {

@@ -532,6 +532,7 @@ fast_downward_plugin(
         conjunctions/utils.h
         conjunctions/search_engines/enforced_hill_climbing_search.cc
         conjunctions/search_engines/enforced_hill_climbing_novelty_search.cc
+        conjunctions/search_engines/ipc18_iterated_search.cc
         conjunctions/search_engines/lazy_search.cc
         conjunctions/search_engines/online_learning_search_engine.cc
     DEPENDS BOOST

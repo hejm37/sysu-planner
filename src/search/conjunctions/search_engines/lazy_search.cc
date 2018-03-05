@@ -24,13 +24,69 @@ LazySearch::LazySearch(const options::Options &opts) :
 	current_eval_context(current_state, 0, true, &statistics),
 	conjunctions_heuristic(static_cast<ConjunctionsHeuristic *>(opts.get<Heuristic *>("conjunctions_heuristic"))),
 	strategy(opts.get<std::shared_ptr<ConjunctionGenerationStrategy>>("strategy")),
-	solved(false) {}
+	solved(false),
+	enable_heuristic_cache(opts.get<bool>("enable_heuristic_cache")),
+	heuristic_cache() {}
 
 void LazySearch::set_pref_operator_heuristics(std::vector<Heuristic *> &heur) {
 	preferred_operator_heuristics = heur;
 }
 
+void LazySearch::set_iterated_weights_options(const options::Options &opts) {
+	iterated_weights_options = std::make_unique<IteratedWeightsOptions>(IteratedWeightsOptions{
+		opts.get_list<ScalarEvaluator *>("evals"),
+		opts.get_list<Heuristic *>("preferred"),
+		opts.get<int>("boost"),
+		opts.get_list<int>("weights"),
+		-1,
+		opts.get<bool>("repeat_last"),
+		false});
+	assert(iterated_weights_options->current_weight_index == -1); // the implementation really depends on this
+}
+
+auto LazySearch::has_another_phase() const -> bool {
+	return iterated_weights_options && 
+		(iterated_weights_options->current_weight_index + 1 < static_cast<int>(iterated_weights_options->weights.size())
+			|| iterated_weights_options->repeat_last);
+}
+
+void LazySearch::restart_with_next_weight() {
+	assert(iterated_weights_options);
+	assert(iterated_weights_options->current_weight_index + 1 < static_cast<int>(iterated_weights_options->weights.size()) || iterated_weights_options->repeat_last);
+	clear_solved();
+	if (iterated_weights_options->current_weight_index + 1 == static_cast<int>(iterated_weights_options->weights.size())) {
+		assert(iterated_weights_options->repeat_last);
+		iterated_weights_options->currently_repeating = true;
+		return;
+	}
+	++iterated_weights_options->current_weight_index;
+	assert(iterated_weights_options->current_weight_index >= 0);
+	auto open_list_options = options::Options();
+	open_list_options.set<std::vector<ScalarEvaluator *>>("evals", iterated_weights_options->evals);
+	open_list_options.set<int>("w", iterated_weights_options->weights[iterated_weights_options->current_weight_index]);
+	open_list_options.set<std::vector<Heuristic *>>("preferred", iterated_weights_options->preferred);
+	open_list_options.set<int>("boost", iterated_weights_options->boost);
+	open_list = search_common::create_wastar_open_list_factory(open_list_options)->create_edge_open_list();
+	current_state = state_registry.get_initial_state();
+	current_predecessor_id = StateID::no_state;
+	current_operator = nullptr;
+	current_g = 0;
+	current_real_g = 0;
+	current_eval_context = EvaluationContext(current_state, 0, true, &statistics);
+	reopen_closed_nodes = true;
+	solved = false;
+	search_space.clear();
+}
+
 void LazySearch::initialize() {
+	if (iterated_weights_options && iterated_weights_options->current_weight_index != -1) {
+		const auto &initial_state = state_registry.get_initial_state();
+		for (auto heuristic : heuristics)
+			heuristic->notify_initial_state(initial_state);
+		start_search_timer();
+		return;
+	}
+
 	utils::Timer initialization_timer;
 	std::cout << "Conducting lazy best first search with online learning of conjunctions, (real) bound = " << bound << std::endl;
 
@@ -162,8 +218,16 @@ SearchStatus LazySearch::step() {
 	// - current_real_g is the g value of the current state (using real costs)
 
 	// stop immediately if a solution was found during the initialization
-	if (solved)
+	// ... except if this is lazy_wastar, where we might want to find a better solution through search
+	if (solved && !reopen_closed_nodes)
 		return SOLVED;
+
+	// if we repeat the last weight, search will continue after finding a solution but with an updated bound
+	// the open list is not cleared, so we need to check if the current state still satisfies the new bound
+	if (current_real_g > bound) {
+		assert(iterated_weights_options && iterated_weights_options->currently_repeating);
+		return fetch_next_state();
+	}
 
 	auto node = search_space.get_node(current_state);
 	const auto reopen = reopen_closed_nodes && !node.is_new() &&
@@ -183,6 +247,8 @@ SearchStatus LazySearch::step() {
 			for (auto *heuristic : heuristics)
 				heuristic->notify_state_transition(parent_state, *current_operator, current_state);
 
+		evaluate_if_neccessary(current_eval_context);
+
 		if (current_predecessor_id == StateID::no_state)
 			print_initial_h_values(current_eval_context);
 		check_timer_and_print_intermediate_statistics(*conjunctions_heuristic);
@@ -199,28 +265,32 @@ SearchStatus LazySearch::step() {
 			} else {
 				node.open(parent_node, current_operator);
 			}
-
-			assert(conjunctions_heuristic->is_last_bsg_valid_for_state(current_state));
 			assert(current_real_g == node.get_real_g());
-			if (check_relaxed_plans
-				&& is_valid_plan_in_the_original_task(conjunctions_heuristic->get_last_bsg(), current_state.get_values(), *g_root_task())
-				&& current_real_g + conjunctions_heuristic->get_last_bsg().get_real_cost() <= bound) {
-				set_solution(conjunctions_heuristic->get_last_relaxed_plan(), current_state);
-				return SOLVED;
-			}
+			assert(conjunctions_heuristic->is_last_bsg_valid_for_state(current_state) || enable_heuristic_cache);
 
-			const auto current_h = current_eval_context.get_heuristic_value(conjunctions_heuristic);
-			// generate conjunctions according to the selected strategy for this step
-			const auto result = generate_conjunctions(*conjunctions_heuristic, ConjunctionGenerationStrategy::Event::STEP, current_eval_context, true, bound - current_real_g);
-			if (result == ConjunctionGenerationStrategy::Result::SOLVED && current_real_g + conjunctions_heuristic->get_last_bsg().get_real_cost() <= bound)
-				return SOLVED;
-			if (result == ConjunctionGenerationStrategy::Result::DEAD_END) {
-				node.mark_as_dead_end();
-				statistics.inc_dead_ends();
-				return fetch_next_state();
+			if (conjunctions_heuristic->is_last_bsg_valid_for_state(current_state)) {
+				if (check_relaxed_plans
+					&& is_valid_plan_in_the_original_task(conjunctions_heuristic->get_last_bsg(), current_state.get_values(), *g_root_task())
+					&& current_real_g + conjunctions_heuristic->get_last_bsg().get_real_cost() <= bound) {
+					set_solution(conjunctions_heuristic->get_last_relaxed_plan(), current_state);
+					return SOLVED;
+				}
+
+				const auto current_h = current_eval_context.get_heuristic_value(conjunctions_heuristic);
+				auto current_preferred = current_eval_context.get_preferred_operators(conjunctions_heuristic);
+				// generate conjunctions according to the selected strategy for this step
+				const auto result = generate_conjunctions(*conjunctions_heuristic, ConjunctionGenerationStrategy::Event::STEP, current_eval_context, true, bound - current_real_g);
+				if (result == ConjunctionGenerationStrategy::Result::SOLVED && current_real_g + conjunctions_heuristic->get_last_bsg().get_real_cost() <= bound)
+					return SOLVED;
+				if (result == ConjunctionGenerationStrategy::Result::DEAD_END) {
+					node.mark_as_dead_end();
+					statistics.inc_dead_ends();
+					return fetch_next_state();
+				}
+				// we don't want to reevaluate the heuristic but the heuristic cache is cleared in the conjunction generation process, so just reuse the old value
+				const_cast<HeuristicCache &>(current_eval_context.get_cache())[conjunctions_heuristic].set_h_value(current_h);
+				const_cast<HeuristicCache &>(current_eval_context.get_cache())[conjunctions_heuristic].set_preferred_operators(std::move(current_preferred));
 			}
-			// we don't want to reevaluate the heuristic but the heuristic cache is cleared in the conjunction generation process, so just reuse the old value
-			const_cast<HeuristicCache &>(current_eval_context.get_cache())[conjunctions_heuristic].set_h_value(current_h);
 
 			node.close();
 			if (check_goal_and_set_plan(current_state))
@@ -239,6 +309,45 @@ SearchStatus LazySearch::step() {
 	}
 	return fetch_next_state();
 }
+
+void LazySearch::update_eval_context(EvaluationContext &eval_context, const decltype(heuristic_cache)::mapped_type &cache_entry) {
+	auto eval_result = EvaluationResult();
+	eval_result.set_h_value(cache_entry.first);
+	auto preferred_operators = std::vector<const GlobalOperator *>();
+	preferred_operators.reserve(cache_entry.second.size());
+	std::transform(std::begin(cache_entry.second), std::end(cache_entry.second), std::back_inserter(preferred_operators), [](const auto op_index) {
+		return &g_operators[op_index];
+	});
+	eval_result.set_preferred_operators(std::move(preferred_operators));
+	eval_result.set_count_evaluation(false);
+	const_cast<HeuristicCache &>(eval_context.get_cache())[conjunctions_heuristic] = std::move(eval_result);
+}
+
+auto LazySearch::evaluate_if_neccessary(EvaluationContext &eval_context) -> int {
+	const auto &state = eval_context.get_state();
+	const auto heuristic_cache_it = enable_heuristic_cache ? heuristic_cache.find(state.get_id()) : std::end(heuristic_cache);
+	const auto do_evaluate = !enable_heuristic_cache || heuristic_cache_it == std::end(heuristic_cache);
+	if (do_evaluate) {
+		const auto &result = eval_context.get_result(conjunctions_heuristic);
+		if (enable_heuristic_cache && !result.is_infinite()) {
+			const auto &preferred_operators = result.get_preferred_operators();
+			auto preferred_operators_indices = std::vector<int>();
+			preferred_operators_indices.reserve(preferred_operators.size());
+			std::transform(std::begin(preferred_operators), std::end(preferred_operators), std::back_inserter(preferred_operators_indices), [](const auto *op) {
+				auto op_index = op - &*g_operators.begin();
+				assert(op_index >= 0 && op_index < static_cast<int>(g_operators.size()));
+				return op_index;
+			});
+			heuristic_cache[state.get_id()] = {result.get_h_value(), preferred_operators_indices};
+		}
+		return result.get_h_value();
+	} else {
+		update_eval_context(eval_context, heuristic_cache_it->second);
+		return heuristic_cache_it->second.first;
+	}
+}
+
+
 
 void LazySearch::reward_progress() {
 	open_list->boost_preferred();
@@ -284,6 +393,7 @@ static SearchEngine *_parse(options::OptionParser &parser) {
 	_add_succ_order_options(parser);
 	SearchEngine::add_options_to_parser(parser);
 	parser.add_option<Heuristic *>("conjunctions_heuristic", "conjunctions heuristic");
+	parser.add_option<bool>("enable_heuristic_cache", "cache heuristic values of the conjunctions heuristic", "false");
 	OnlineLearningSearchEngine::add_options_to_parser(parser);
 	options::Options opts = parser.parse();
 
@@ -347,6 +457,7 @@ static SearchEngine *_parse_greedy(options::OptionParser &parser) {
 	_add_succ_order_options(parser);
 	SearchEngine::add_options_to_parser(parser);
 	parser.add_option<Heuristic *>("conjunctions_heuristic", "conjunctions heuristic");
+	parser.add_option<bool>("enable_heuristic_cache", "cache heuristic values of the conjunctions heuristic", "false");
 	OnlineLearningSearchEngine::add_options_to_parser(parser);
 	auto opts = parser.parse();
 
@@ -418,6 +529,7 @@ static SearchEngine *_parse_weighted_astar(options::OptionParser &parser) {
 	_add_succ_order_options(parser);
 	SearchEngine::add_options_to_parser(parser);
 	parser.add_option<Heuristic *>("conjunctions_heuristic", "conjunctions heuristic");
+	parser.add_option<bool>("enable_heuristic_cache", "cache heuristic values of the conjunctions heuristic", "false");
 	OnlineLearningSearchEngine::add_options_to_parser(parser);
 	options::Options opts = parser.parse();
 
@@ -433,7 +545,42 @@ static SearchEngine *_parse_weighted_astar(options::OptionParser &parser) {
 	return engine;
 }
 
+static SearchEngine *_parse_iterated_weights(options::OptionParser &parser) {
+	parser.document_synopsis(
+		"GBFS and A* search with interated weights (lazy)",
+		"Always starts with GBFS, then does iterations of Weighted A* search.");
+	parser.add_list_option<ScalarEvaluator *>("evals", "scalar evaluators");
+	parser.add_list_option<Heuristic *>(
+		"preferred",
+		"use preferred operators of these heuristics", "[]");
+	parser.add_option<int>("boost",
+		"boost value for preferred operator open lists",
+		options::OptionParser::to_str(DEFAULT_LAZY_BOOST));
+	parser.add_list_option<int>("weights", "heuristic weights", "[5, 3, 2, 1]");
+	parser.add_option<bool>("repeat_last", "after going through all weights, repeat with the last one", "true");
+	_add_succ_order_options(parser);
+	SearchEngine::add_options_to_parser(parser);
+	parser.add_option<Heuristic *>("conjunctions_heuristic", "conjunctions heuristic");
+	parser.add_option<bool>("enable_heuristic_cache", "cache heuristic values of the conjunctions heuristic", "true");
+	OnlineLearningSearchEngine::add_options_to_parser(parser);
+	options::Options opts = parser.parse();
+
+	opts.verify_list_non_empty<ScalarEvaluator *>("evals");
+	opts.set<bool>("reopen_closed", false);
+
+	LazySearch *engine = nullptr;
+	if (!parser.dry_run()) {
+		opts.set("open", search_common::create_greedy_open_list_factory(opts));
+		engine = new LazySearch(opts);
+		engine->set_iterated_weights_options(opts);
+		std::vector<Heuristic *> preferred_list = opts.get_list<Heuristic *>("preferred");
+		engine->set_pref_operator_heuristics(preferred_list);
+	}
+	return engine;
+}
+
 static options::Plugin<SearchEngine> _plugin("lazy_c", _parse);
 static options::Plugin<SearchEngine> _plugin_greedy("lazy_greedy_c", _parse_greedy);
 static options::Plugin<SearchEngine> _plugin_weighted_astar("lazy_wastar_c", _parse_weighted_astar);
+static options::Plugin<SearchEngine> _plugin_iterated_weights("lazy_iterated_weights_c", _parse_iterated_weights);
 }

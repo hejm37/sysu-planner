@@ -239,6 +239,9 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 
 	auto dead_end_unsafe = false;
 	while (!open_list->empty()) {
+		if (is_time_expired())
+			return TIMEOUT;
+
 		check_timer_and_print_intermediate_statistics(*heuristic);
 		const auto entry = open_list->remove_min();
 		const auto parent_state_id = entry.first;
@@ -293,7 +296,7 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 				return SOLVED;
 			}
 
-			if (h < current_eval_context.get_heuristic_value(heuristic)) {
+			if (h < current_eval_context.get_heuristic_value(heuristic) || (h == 0 && test_goal(eval_context.get_state()))) {
 				learning_stagnation_counter = 0;
 				current_unsafe_dead_ends.clear();
 				bfs_lowest_h_value = std::numeric_limits<int>::max();
@@ -417,6 +420,9 @@ auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
 	auto modified = false;
 
 	do {
+		if (is_time_expired())
+			return TIMEOUT;
+
 		current_eval_context = EvaluationContext(current_eval_context.get_state(), &statistics);
 		auto learning_result = generate_conjunctions(*heuristic, ConjunctionGenerationStrategy::Event::LOCAL_MINIMUM, current_eval_context, true, bound - current_real_g);
 		if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED && current_real_g + heuristic->get_last_bsg().get_real_cost() <= bound)
