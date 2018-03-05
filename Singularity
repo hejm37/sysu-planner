@@ -22,11 +22,11 @@ From:      fedora:latest
     ## Install all necessary dependencies.
     dnf upgrade -y
     dnf group install -y "Development Tools"
-    dnf install -y python gcc-c++ cmake boost boost-devel glibc-static libstdc++-static
+    dnf install -y python gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang
 
     ## Build your planner
     cd /planner/fast-downward-conjunctions
-    ./build.py release64 -j4
+    ./build.py release64clang -j4
 
 %runscript
     ## The runscript is called whenever the container is used to solve
@@ -37,26 +37,28 @@ From:      fedora:latest
     DOMAINFILE=$1
     PROBLEMFILE=$2
     PLANFILE=$3
-    ## The cost bound is only used in the cost-bounded track.
-    COSTBOUND=$4
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
-        --build=release64 \
+        --build=release64clang \
         --plan-file $PLANFILE \
         $DOMAINFILE \
         $PROBLEMFILE \
     --heuristic "hcff=cff(seed=$SEED, cache_estimates=false, cost_type=ONE)" \
-    --heuristic "hn=novelty(cache_estimates=false)" \
+    --heuristic hn=novelty(cache_estimates=false) \
     --heuristic "tmp=novelty_linker(hcff, [hn])" \
-    --search "ehc_cn(hcff, preferred=hcff, novelty=hn, seed=$SEED, cost_type=ONE)"
+    --heuristic "hlm=lmcount(lm_rhw(reasonable_orders=true, lm_cost_type=ONE), cost_type=ONE)" \
+    --search "ipc18_iterated([ehc_cn(hcff, preferred=hcff, novelty=hn, seed=$SEED, cost_type=ONE, max_growth=8, max_time=180), lazy_greedy_c([hcff, hlm], preferred=[hcff], conjunctions_heuristic=hcff, strategy=maintain_fixed_size_probabilistic(initial_removal_mode=UNTIL_BOUND, base_probability=0.02, target_growth_ratio=1.50), cost_type=ONE)], continue_on_solve=false, continue_on_fail=true, delete_after_phase_heuristics=[hn, tmp], delete_after_phase_phases=[0, 0])" \
+    --translate-options --invariant-generation-max-time 30 \
+    --preprocess-options --h2-time-limit 30
 
 ## Update the following fields with meta data about your submission.
 ## Please use the same field names and use only one line for each value.
 %labels
 Name        Planner 4
-Description Refinement-EHC with hCFF and novelty pruning
+Description Online-Learning hCFF in EHC with Novelty Pruning and GBFS with Landmarks
 Authors     Maximilian Fickert <fickert@cs.uni-saarland.de>
+            Jörg Hoffmann <hoffmann@cs.uni-saarland.de>
 SupportsDerivedPredicates no
 SupportsQuantifiedPreconditions no
 SupportsQuantifiedEffects no
