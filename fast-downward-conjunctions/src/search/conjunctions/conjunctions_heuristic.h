@@ -131,9 +131,6 @@ public:
 			|| std::any_of(std::begin(supported.facts), std::end(supported.facts), is_mutex_with_f);
 	}
 
-	auto get_potentially_supporting_actions(const FactSet &facts) const -> std::vector<const Action *>;
-	void add_regression_if_supporting(const FactSet &facts, const Action &action, std::vector<std::pair<const Action *, std::vector<FactPair>>> &regressions);
-
 	void add_conjunctions(const std::vector<FactSet> &factsets);
 
 	void remove_random_conjunctions(int count = 1, int min_evaluations = 0);
@@ -158,8 +155,86 @@ public:
 		std::cout << "Counter size growth ratio: " << get_counter_size_growth() << std::endl;
 	}
 
+	void subscribe(novelty::NoveltyHeuristic &novelty_heuristic);
+	void unsubscribe(novelty::NoveltyHeuristic &novelty_heuristic);
+
+	void write_conjunctions_to_file(std::string file_name) const {
+		auto temp_file_name = "conjunctions.tmp";
+		auto out = std::ofstream(temp_file_name);
+		for (auto conjunction_it = std::begin(conjunctions) + num_singletons; conjunction_it != std::end(conjunctions); ++conjunction_it)
+			out << **conjunction_it << '\n';
+		assert(std::all_of(std::begin(conjunctions), std::end(conjunctions), [this](auto c) {
+			return std::all_of(std::begin(c->facts), std::end(c->facts), [this](const auto &f) { return f.value < task->get_variable_domain_size(f.var); });
+		}));
+		out.close();
+		std::experimental::filesystem::rename(std::experimental::filesystem::path(temp_file_name), std::experimental::filesystem::path(file_name));
+	}
+
+	// FD plugin
+	static void add_common_options(options::OptionParser &parser);
+	static void set_hc_options(options::Options &opts);
+
+private:
+	std::vector<FactPair> goal_facts;
+
+	struct ConjunctionStatistics {
+		ConjunctionStatistics() :
+			occurences(0),
+			total(0),
+			evaluations(0) {}
+
+		// occurences in relaxed plans
+		int occurences;
+
+		// total number of generated relaxed plans since this conjunction was added
+		int total;
+
+		// total number of evaluations since this conjunction was added
+		int evaluations;
+	};
+
+	std::unordered_map<const Conjunction *, ConjunctionStatistics> conjunction_statistics;
+
+	enum class BestSupporterFunction {
+		HCADD,
+		HCADD_ALTERNATIVE,
+		HCMAX,
+		HCMAX_GREEDY
+	};
+
+	enum class TieBreaking {
+		ARBITRARY,
+		DIFFICULTY,
+		RANDOM,
+		SUPPORTED_CONJUNCTIONS,
+		SUPPORTED_CONJUNCTIONS_COST,
+		CONFLICTS
+	};
+
+
+	friend auto operator<<(std::ostream &, const BestSupporterFunction) -> std::ostream &;
+	friend auto operator<<(std::ostream &, const TieBreaking) -> std::ostream &;
+
+	// all actions
+	std::vector<Action *> actions;
+	std::vector<std::vector<std::vector<const Action *>>> actions_by_effects;
+
+	// all conjunctions (including singletons)
+	std::vector<Conjunction *> conjunctions;
+
+	auto get_potentially_supporting_actions(const FactSet &facts) const->std::vector<const Action *>;
+	auto compute_regressions(const FactSet &facts) const->std::vector<std::pair<const Action *, std::vector<FactPair>>>;
+
+	// list of conjunctions c for each fact f where f in c
+	std::vector<std::vector<std::vector<Conjunction *>>> conjunctions_containing_fact;
+	void initialize_conjunctions_containing_fact();
+
+	
 	std::vector<CounterGroup> counter_groups;
 	std::vector<CounterGroupIndex> unused_counter_groups;
+
+	static constexpr auto COUNTER_GROUP_NONE = static_cast<CounterGroupIndex>(-1);
+	ConjunctionMap<CounterGroupIndex> counter_groups_by_regression;
 
 	auto add_counter_group(const std::vector<FactPair> &facts) -> CounterGroupIndex {
 		if (unused_counter_groups.empty()) {
@@ -259,75 +334,6 @@ public:
 		}
 	}
 
-	static constexpr auto COUNTER_GROUP_NONE = static_cast<CounterGroupIndex>(-1);
-	ConjunctionMap<CounterGroupIndex> counter_groups_by_regression;
-
-	void write_conjunctions_to_file(std::string file_name) const {
-		auto temp_file_name = "conjunctions.tmp";
-		auto out = std::ofstream(temp_file_name);
-		for (auto conjunction_it = std::begin(conjunctions) + num_singletons; conjunction_it != std::end(conjunctions); ++conjunction_it)
-			out << **conjunction_it << '\n';
-		assert(std::all_of(std::begin(conjunctions), std::end(conjunctions), [this](auto c) {
-			return std::all_of(std::begin(c->facts), std::end(c->facts), [this](const auto &f) { return f.value < task->get_variable_domain_size(f.var); });
-		}));
-		out.close();
-		std::experimental::filesystem::rename(std::experimental::filesystem::path(temp_file_name), std::experimental::filesystem::path(file_name));
-	}
-
-	// FD plugin
-	static void add_common_options(options::OptionParser &parser);
-	static void set_hc_options(options::Options &opts);
-
-private:
-	std::vector<FactPair> goal_facts;
-
-	struct ConjunctionStatistics {
-		ConjunctionStatistics() :
-			occurences(0),
-			total(0),
-			evaluations(0) {}
-
-		// occurences in relaxed plans
-		int occurences;
-
-		// total number of generated relaxed plans since this conjunction was added
-		int total;
-
-		// total number of evaluations since this conjunction was added
-		int evaluations;
-	};
-
-	std::unordered_map<const Conjunction *, ConjunctionStatistics> conjunction_statistics;
-
-	enum class BestSupporterFunction {
-		HCADD,
-		HCADD_ALTERNATIVE,
-		HCMAX,
-		HCMAX_GREEDY
-	};
-
-	enum class TieBreaking {
-		ARBITRARY,
-		DIFFICULTY,
-		RANDOM,
-		SUPPORTED_CONJUNCTIONS,
-		SUPPORTED_CONJUNCTIONS_COST
-	};
-
-
-	friend auto operator<<(std::ostream &, const BestSupporterFunction) -> std::ostream &;
-	friend auto operator<<(std::ostream &, const TieBreaking) -> std::ostream &;
-
-	// all actions
-	std::vector<Action *> actions;
-
-	// all conjunctions (including singletons)
-	std::vector<Conjunction *> conjunctions;
-
-	// list of conjunctions c for each fact f where f in c
-	std::vector<std::vector<std::vector<Conjunction *>>> conjunctions_containing_fact;
-	void initialize_conjunctions_containing_fact();
-
 	// dummy precondition for actions without preconditions
 	Conjunction dummy_precondition;
 	CounterGroupIndex empty_counter_group_index;
@@ -335,8 +341,7 @@ private:
 	bool initial_state;
 	std::shared_ptr<ConjunctionGenerationStrategy> strategy;
 
-	friend class novelty::NoveltyLinker;
-	std::vector<novelty::NoveltyHeuristic *> novelty_heuristics;
+	std::unordered_set<novelty::NoveltyHeuristic *> novelty_heuristics;
 
 	// from command line options
 	const bool no_relaxed_plan_extraction;
@@ -400,6 +405,9 @@ private:
 
 	// BSG representing the most recently extracted relaxed plan
 	BestSupporterGraph current_bsg;
+
+	// currently used preconditions in the relaxed plan (only used for CONFLICTS tie breaking)
+	std::unordered_set<Conjunction *> current_preconditions;
 
 	// the values of the current state, i.e. the one for which the relaxed plan was computed
 	std::vector<int> current_state_values;

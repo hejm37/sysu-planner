@@ -3,13 +3,15 @@
 #include "../option_parser.h"
 #include "../plugin.h"
 #include "../evaluation_context.h"
+#include "conjunctions_heuristic.h"
 
 
 namespace novelty {
 NoveltyHeuristic::NoveltyHeuristic(const Options &opts)
     : Heuristic(opts),
 	  conjunctions(),
-	  heuristics(opts.get_list<Heuristic *>("heuristics")) {
+	  heuristics(opts.get_list<Heuristic *>("heuristics")),
+	  conjunctions_heuristic(nullptr) {
     std::cout << "Initializing novelty heuristic..." << std::endl;
 
     // Initializing fact sets
@@ -19,7 +21,10 @@ NoveltyHeuristic::NoveltyHeuristic(const Options &opts)
 	num_singletons = conjunctions.size();
 }
 
-NoveltyHeuristic::~NoveltyHeuristic() {}
+NoveltyHeuristic::~NoveltyHeuristic() {
+	if (conjunctions_heuristic)
+		conjunctions_heuristic->unsubscribe(*this);
+}
 
 void NoveltyHeuristic::add_conjunction(const FactSet &facts) {
 	conjunctions.emplace_back(facts, std::max(static_cast<decltype(heuristics.size())>(1), heuristics.size()));

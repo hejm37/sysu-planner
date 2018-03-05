@@ -13,5 +13,19 @@ debug32clang = debug32 + ['-DCMAKE_C_COMPILER=/usr/bin/clang', '-DCMAKE_CXX_COMP
 release64clang = release64 + ['-DCMAKE_C_COMPILER=/usr/bin/clang', '-DCMAKE_CXX_COMPILER=/usr/bin/clang++']
 debug64clang = debug64 + ['-DCMAKE_C_COMPILER=/usr/bin/clang', '-DCMAKE_CXX_COMPILER=/usr/bin/clang++']
 
+release32clangpgogen = release32clang + ['-DGENERATE_PROFILING_DATA=True']
+release64clangpgogen = release64clang + ['-DGENERATE_PROFILING_DATA=True']
+
+release32clangpgo = release32clang + ['-DUSE_PGO=True']
+release64clangpgo = release64clang + ['-DUSE_PGO=True']
+
+release32native = release32 + ['-DNATIVE_BUILD=True']
+release64native = release64 + ['-DNATIVE_BUILD=True']
+release32clangnative = release32clang + ['-DNATIVE_BUILD=True']
+release64clangnative = release64clang + ['-DNATIVE_BUILD=True']
+
+release32clangpgonative = release32clang + ['-DUSE_PGO=True', '-DNATIVE_BUILD=True']
+release64clangpgonative = release64clang + ['-DUSE_PGO=True', '-DNATIVE_BUILD=True']
+
 DEFAULT = "release32"
 DEBUG = "debug32"

@@ -15,6 +15,9 @@ GreyInitialStateSearch::GreyInitialStateSearch(const options::Options &opts)
 	  grey_painting(opts.get_enum("grey_painting")) {}
 
 auto GreyInitialStateSearch::step() -> SearchStatus {
+	if (has_conditional_effects())
+		return FAILED;
+
 	auto opts = options::Options();
 
 	// base heuristic options

@@ -3,6 +3,10 @@
 
 #include "../heuristic.h"
 
+namespace conjunctions {
+class ConjunctionsHeuristic;
+}
+
 namespace novelty {
 
 using FactSet = std::vector<FactPair>;
@@ -53,9 +57,18 @@ public:
 
 	void reset();
 
+	void set_associated_conjunctions_heuristic(conjunctions::ConjunctionsHeuristic *heuristic) {
+		conjunctions_heuristic = heuristic;
+	}
+
+	auto get_associated_conjunctions_heuristic() const -> conjunctions::ConjunctionsHeuristic * {
+		return conjunctions_heuristic;
+	}
+
 protected:
 	std::vector<Conjunction> conjunctions;
 	const std::vector<Heuristic *> heuristics;
+	conjunctions::ConjunctionsHeuristic *conjunctions_heuristic;
 
 	int num_singletons;
 
