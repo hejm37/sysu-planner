@@ -56,7 +56,7 @@ From:      fedora:latest
 ## Update the following fields with meta data about your submission.
 ## Please use the same field names and use only one line for each value.
 %labels
-Name        Planner 4
+Name        OLCFF
 Description Online-Learning hCFF in EHC with Novelty Pruning and GBFS with Landmarks
 Authors     Maximilian Fickert <fickert@cs.uni-saarland.de> and Jörg Hoffmann <hoffmann@cs.uni-saarland.de>
 SupportsDerivedPredicates no
