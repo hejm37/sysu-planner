@@ -32,7 +32,7 @@ IPC18IteratedSearch::IPC18IteratedSearch(const Options &opts)
       phase(0),
       current_search(nullptr),
       last_phase_found_solution(false),
-      best_bound(bound),
+      best_bound(bound == std::numeric_limits<int>::max() ? bound : bound + 1),
       iterated_found_solution(false),
       decision_point_was_solved(false),
       decision_point(opts.get<int>("decision_point")),
