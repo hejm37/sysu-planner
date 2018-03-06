@@ -36,7 +36,7 @@ if(USE_PGO)
     if(NOT(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang"))
         message(FATAL_ERROR "Building with PGO is currently only supported for clang.")
     endif()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-use=/mnt/data_server/fickert/pgodata/fd.profraw")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-use=/planner/ipc18.profdata")
 endif()
 
 option(
