@@ -26,7 +26,7 @@ From:      fedora:latest
 
     ## Build your planner
     cd /planner/fast-downward-conjunctions
-    ./build.py release64clang -j4
+    ./build.py release64clangpgonative -j4
 
 %runscript
     ## The runscript is called whenever the container is used to solve
@@ -40,7 +40,7 @@ From:      fedora:latest
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
-        --build=release64clang \
+        --build=release64clangpgonative \
         --plan-file $PLANFILE \
         $DOMAINFILE \
         $PROBLEMFILE \
