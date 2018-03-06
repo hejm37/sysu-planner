@@ -61,4 +61,4 @@ Description Online-Learning hCFF in EHC with Novelty Pruning and GBFS with Landm
 Authors     Maximilian Fickert <fickert@cs.uni-saarland.de> and Jörg Hoffmann <hoffmann@cs.uni-saarland.de>
 SupportsDerivedPredicates no
 SupportsQuantifiedPreconditions no
-SupportsQuantifiedEffects no
+SupportsQuantifiedEffects yes
