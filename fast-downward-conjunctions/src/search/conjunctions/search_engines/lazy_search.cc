@@ -181,6 +181,11 @@ void LazySearch::generate_successors() {
 SearchStatus LazySearch::fetch_next_state() {
 	if (open_list->empty()) {
 		std::cout << "Completely explored state space -- no solution!" << std::endl;
+		if (iterated_weights_options) {
+			// no need to repeat if we already know that we can't find a solution within the current bound
+			iterated_weights_options->repeat_last = false;
+			iterated_weights_options->current_weight_index = iterated_weights_options->weights.size();
+		}
 		return FAILED;
 	}
 
