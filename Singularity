@@ -28,6 +28,13 @@ From:      fedora:latest
     cd /planner/fast-downward-conjunctions
     ./build.py release64clangpgonative -j4
 
+    ## Clean up
+    rm -rf /planner/fast-downward-conjunctions/builds/release64clangpgonative/search/CMakeFiles
+    dnf remove -y gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang
+    dnf autoremove -y
+    dnf clean all
+
+
 %runscript
     ## The runscript is called whenever the container is used to solve
     ## an instance.
