@@ -104,8 +104,8 @@ public:
 		return conjunctions;
 	}
 
-	auto get_cost_in_current_state(const FactSet &) const -> int;
-	auto get_cost_increase_in_current_state(const FactSet &) const -> int;
+	auto get_cost_in_current_state(const FactSet &) const -> cost_t;
+	auto get_cost_increase_in_current_state(const FactSet &) const -> cost_t;
 	auto get_num_added_counters(const FactSet &) const -> int;
 	auto get_num_added_counters_estimate(const FactSet &) const -> int;
 	auto get_num_added_counter_groups(const FactSet &) const -> int;
@@ -422,10 +422,10 @@ private:
 
 	void reset_heuristic();
 	
-	auto compute_best_supporter_function(const State &) -> int;
+	auto compute_best_supporter_function(const State &) -> cost_t;
 
-	auto compute_hcadd(const State &) -> int;
-	auto compute_hcadd_alternative(const State &) -> int;
+	auto compute_hcadd(const State &) -> cost_t;
+	auto compute_hcadd_alternative(const State &) -> cost_t;
 
 	auto compute_hcmax(const State &) -> int;
 	auto compute_hcmax_greedy(const State &) -> int;

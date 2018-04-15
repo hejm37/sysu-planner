@@ -15,6 +15,7 @@
 #include "DAG_new_agenda.h"
 #include "../utils/rng.h"
 #include "../globals.h"
+#include <map>
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -127,7 +128,8 @@ class GreyHeuristic: public additive_heuristic::AdditiveHeuristic {
 	typedef std::vector<bool> RelaxedPlan;
 	RelaxedPlan relaxed_plan;
 	// Patrick: copied from Micheal:
-	typedef std::vector<std::vector<int> > ParallelRelaxedPlan;
+	//typedef std::vector<std::vector<int> > ParallelRelaxedPlan;
+	using ParallelRelaxedPlan = std::map<long long, std::vector<int>>;
 	ParallelRelaxedPlan parallel_relaxed_plan;
 
 	// Patrick: copied from Michael: For checking overall applicability
@@ -278,7 +280,7 @@ class GreyHeuristic: public additive_heuristic::AdditiveHeuristic {
 	int get_index_interpolating_between_famax_and_incdom(std::vector<int>& order, int* elements) const;
 
 	void paint_red_by_vertex_cover(std::vector<int>& order, int* elements);
-	int compute_seq_relaxed_plan_for_state_for_initialization(const GlobalState &state, RelaxedSerialization seq_method);
+	long long compute_seq_relaxed_plan_for_state_for_initialization(const GlobalState &state, RelaxedSerialization seq_method);
 	void compute_variables_conflict_costs(StateRegistry &state_registry, std::vector<int>& var_costs, RelaxedSerialization seq_method);
 	void set_variables_order_by_level_heuristic(std::vector<int>& order);
 	int sample_size;
@@ -339,7 +341,7 @@ class GreyHeuristic: public additive_heuristic::AdditiveHeuristic {
 
 	int get_operator_estimated_conflict_cost(int op_no) const;
 	void remove_all_operators_from_parallel_relaxed_plan();
-	int remove_operator_from_parallel_relaxed_plan(int i, int j);
+	int remove_operator_from_parallel_relaxed_plan(long long i, int j);
 
 
 	void dump_options() const;
