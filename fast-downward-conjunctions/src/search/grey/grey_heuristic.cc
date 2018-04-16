@@ -2370,17 +2370,17 @@ void GreyHeuristic::precalculate_shortest_paths_for_var(int var, bool force_comp
     }
 }
 
-int GreyHeuristic::compute_seq_relaxed_plan_for_state_for_initialization(const GlobalState &state, RelaxedSerialization seq_method) {
+long long GreyHeuristic::compute_seq_relaxed_plan_for_state_for_initialization(const GlobalState &state, RelaxedSerialization seq_method) {
 	// Returns the h_add heuristic of the given state
 	// Sets seq_relaxed_plan to keep the sequential relaxed plan
-    int h_add = compute_add_and_ff(state);
+    long long h_add = compute_add_and_ff(state);
 
     cout << "h_add value is " << h_add << endl;
     if (h_add == DEAD_END)
     	return DEAD_END;
     // Getting the relaxed plan.
     parallel_relaxed_plan.clear();
-    parallel_relaxed_plan.assign(h_add+1, vector<int>());
+    // parallel_relaxed_plan.assign(h_add+1, vector<int>());
 
     for (size_t i = 0; i < goal_propositions.size(); i++)
         get_relaxed_plan(state, goal_propositions[i]);
@@ -2413,7 +2413,7 @@ void GreyHeuristic::compute_variables_conflict_costs(StateRegistry &state_regist
 
     // Getting the initial state relaxed plan, for calculating conflicts
     cout << "Computing relaxed plan for the initial state" << endl;
-    int h_add = compute_seq_relaxed_plan_for_state_for_initialization(state_registry.get_initial_state(), seq_method);
+    long long h_add = compute_seq_relaxed_plan_for_state_for_initialization(state_registry.get_initial_state(), seq_method);
     if (h_add == DEAD_END) {
     	cout << "Initial state is a dead end, setting order by level heuristic" << endl;
     	return;
@@ -2445,7 +2445,7 @@ void GreyHeuristic::compute_variables_conflict_costs(StateRegistry &state_regist
 	for (size_t s=0; s < sample_states.size(); s++) {
 		if (s > 0) {
 			seq_relaxed_plan.clear();
-			int h_add = compute_seq_relaxed_plan_for_state_for_initialization(sample_states[s], seq_method);
+			long long h_add = compute_seq_relaxed_plan_for_state_for_initialization(sample_states[s], seq_method);
 			if (h_add == DEAD_END) // Skipping dead end states
 				continue;
 		}
@@ -2939,14 +2939,14 @@ void GreyHeuristic::mark_preferred_operators_and_relaxed_plan(const GlobalState 
 }
 
 auto GreyHeuristic::ff_compute_heuristic(const GlobalState &state) -> int {
-    int h_add = compute_add_and_ff(state);
+    long long h_add = compute_add_and_ff(state);
     if (h_add == DEAD_END)
         return h_add;
 
     // Copied from Michael: for finding plans from relaxed plans
     if (extract_plan) {
     	parallel_relaxed_plan.clear();
-    	parallel_relaxed_plan.assign(h_add+1, std::vector<int>());
+    	// parallel_relaxed_plan.assign(h_add+1, std::vector<int>());
     }
 
     // Collecting the relaxed plan also sets the preferred operators.
@@ -2980,6 +2980,21 @@ void GreyHeuristic::apply_while_possible() {
 
 //	cout << "Checking parallel relaxed plan with  " << parallel_relaxed_plan.size() << " layers" << endl;
 
+	for (const auto &entry : parallel_relaxed_plan) {
+		for (const auto op_id : entry.second) {
+			const GlobalOperator *op = &g_operators[op_id];
+			if (!is_op_applicable(op, curr_state_buffer)) {
+				//				applicability_status = false;
+				//				cout << "Not applicable" << endl;
+				return;
+			}
+			//			cout << "Applicable" << endl;
+			suffix_plan.push_back(op);
+			apply_op(op, curr_state_buffer);
+		}
+	}
+
+	/*
 	for (size_t i=0; i < parallel_relaxed_plan.size(); i++) {
 //		cout << "Checking layer " << i << " with " << parallel_relaxed_plan[i].size() << " operators" << endl;
 		for (size_t j=0; j < parallel_relaxed_plan[i].size(); j++) {
@@ -2997,7 +3012,7 @@ void GreyHeuristic::apply_while_possible() {
 			apply_op(op, curr_state_buffer);
 
 		}
-	}
+	}*/
 	check_goal_via_state();
 }
 
@@ -3206,9 +3221,9 @@ void GreyHeuristic::reset_all_marks() {
 
 	// Calculating the set of sufficient red values, that is the values in goals and in preconditions of the relaxed plan
 	// Goal values are set when the marks are cleared
-	for (size_t i=0; i < parallel_relaxed_plan.size(); i++)
-		for (size_t j=0; j < parallel_relaxed_plan[i].size(); j++)
-			mark_red_sufficient(parallel_relaxed_plan[i][j]);
+	for (const auto &entry : parallel_relaxed_plan)
+		for (const auto op_id : entry.second)
+			mark_red_sufficient(op_id);
 
 	// Trying to postpone the goal value to the end
 	for (size_t ind = 0; ind < red_indices.size(); ind++) {
@@ -3318,15 +3333,14 @@ int GreyHeuristic::add_red_black_plan_suffix(const GlobalState &state, int h_val
 
 void GreyHeuristic::make_sequential_relaxed_plan_vanilla() {
 	// For each layer, create a full order of operators in the layer based on a precalculated partial order between any pair of operators.
-	for (size_t i=0; i < parallel_relaxed_plan.size(); i++)
-		for (size_t j=0; j < parallel_relaxed_plan[i].size(); j++)
-			seq_relaxed_plan.push_back(parallel_relaxed_plan[i][j]);
+	for (const auto &entry : parallel_relaxed_plan)
+		for (const auto op_id : entry.second)
+			seq_relaxed_plan.push_back(op_id);
 }
 
 void GreyHeuristic::make_sequential_relaxed_plan_forward_actions(bool ignore_blacks) {
-	for (size_t i=0; i < parallel_relaxed_plan.size(); i++) {
-		for (size_t j=0; j < parallel_relaxed_plan[i].size(); j++) {
-			int op_no = parallel_relaxed_plan[i][j];
+	for (const auto &entry : parallel_relaxed_plan) {
+		for (const auto op_no : entry.second) {
 			// If the action has black effects, put it here and continue
 			if (!ignore_blacks && !is_red_effects_only_action(op_no)) {
 				seq_relaxed_plan.push_back(op_no);
@@ -3967,18 +3981,20 @@ int GreyHeuristic::get_operator_estimated_conflict_cost(int op_no) const {
 
 
 
-int GreyHeuristic::remove_operator_from_parallel_relaxed_plan(int i, int j) {
+int GreyHeuristic::remove_operator_from_parallel_relaxed_plan(long long i, int j) {
 	// Returns the operator number
 	// Removes the j-th operator from the i-th layer, removing the layer if it is empty.
-	assert(i >= 0 && i < (int) parallel_relaxed_plan.size());
+	assert(i >= 0 && parallel_relaxed_plan.find(i) != std::end(parallel_relaxed_plan));
 	assert(j >= 0 && j < (int) parallel_relaxed_plan[i].size());
-	int op_no = parallel_relaxed_plan[i][j];
+
+	auto pos = parallel_relaxed_plan.find(i);
+	int op_no = pos->second[j];
 
 	relaxed_plan[op_no] = false; // Unmarking the operator
 
-	parallel_relaxed_plan[i].erase(parallel_relaxed_plan[i].begin() + j);
-	if (parallel_relaxed_plan[i].size() == 0)
-		parallel_relaxed_plan.erase(parallel_relaxed_plan.begin() + i);
+	pos->second.erase(parallel_relaxed_plan[i].begin() + j);
+	if (pos->second.empty())
+		parallel_relaxed_plan.erase(pos);
 
 	return op_no;
 }
@@ -4995,12 +5011,10 @@ bool GreyHeuristic::is_semi_relaxed_achieved(int var, int val) const {
 
 void GreyHeuristic::remove_all_operators_from_parallel_relaxed_plan() {
 	// Clearing the marking for the next state
-	int i = parallel_relaxed_plan.size() - 1;
-	for ( ; i >=0; i--) {
-		for (size_t j=0; j < parallel_relaxed_plan[i].size(); j++) {
-			relaxed_plan[parallel_relaxed_plan[i][j]] = false;
-		}
-		parallel_relaxed_plan[i].clear();
+	for (auto &entry : parallel_relaxed_plan) {
+		for (auto op_id : entry.second)
+			relaxed_plan[op_id] = false;
+		entry.second.clear();
 	}
 }
 
@@ -5029,14 +5043,14 @@ int GreyHeuristic::compute_heuristic(const GlobalState &state) {
         return 0;
     }
 
-    int h_add = compute_add_and_ff(state);
+    long long h_add = compute_add_and_ff(state);
 
     if (h_add == DEAD_END){
         return h_add;
     }
 
     // Getting parallel relaxed plan by h_add values - preparing the vector and filling it while marking the operators in the relaxed plan.
-    parallel_relaxed_plan.resize(h_add+1, vector<int>());
+    // parallel_relaxed_plan.resize(h_add+1, vector<int>());
     // The number of operators is calculated in the next step and decreased during the semi-relaxed computation (mostly for the iterative version)
     number_of_operators_to_apply = 0;
     ff_cost = 0;
@@ -5061,11 +5075,11 @@ int GreyHeuristic::compute_heuristic(const GlobalState &state) {
 #endif
 
     // Removing the empty layers, for faster future computation (hopefully). Need to check!!!
-    for (int i=parallel_relaxed_plan.size()-1; i >= 0; i--) {
-    	if (parallel_relaxed_plan[i].size() == 0) {
-    		parallel_relaxed_plan.erase(parallel_relaxed_plan.begin() + i);
-    	}
-    }
+    // for (int i=parallel_relaxed_plan.size()-1; i >= 0; i--) {
+    // 	if (parallel_relaxed_plan[i].size() == 0) {
+    // 		parallel_relaxed_plan.erase(parallel_relaxed_plan.begin() + i);
+    // 	}
+    // }
     int res = get_semi_relaxed_plan_cost(state);
 
     // Replaced with the following:
@@ -5179,13 +5193,11 @@ void GreyHeuristic::verify_semi_relaxed_plan(const GlobalState &state, vector<co
 void GreyHeuristic::print_relaxed_plan() {
     cout << "==========================================================================================" << endl;
     cout << "relaxed plan: " << endl;
-	for (size_t i=0; i < parallel_relaxed_plan.size(); i++) {
-		for (size_t j=0; j < parallel_relaxed_plan[i].size(); j++) {
-			int op_no = parallel_relaxed_plan[i][j];
-	        const GlobalOperator *op = &g_operators[op_no];
-	        op->dump();
-		}
-	}
+
+	for (const auto &entry : parallel_relaxed_plan)
+		for (const auto op_id : entry.second)
+			g_operators[op_id].dump();
+
 	cout << "==========================================================================================" << endl;
 }
 
@@ -5403,12 +5415,10 @@ void GreyHeuristic::dump_parallel_relaxed_plan() const {
 	cout << "-----------------------------------------------------------------------------" << endl;
 	cout << "Parallel relaxed plan:" << endl;
 
-	for (size_t i=0; i < parallel_relaxed_plan.size(); i++) {
-		for (size_t j=0; j < parallel_relaxed_plan[i].size(); j++) {
-			int op_no = parallel_relaxed_plan[i][j];
-			g_operators[op_no].dump();
-		}
-	}
+	for (const auto &entry : parallel_relaxed_plan)
+		for (const auto op_id : entry.second)
+			g_operators[op_id].dump();
+
 	cout << "-----------------------------------------------------------------------------" << endl;
 }
 
