@@ -236,6 +236,8 @@ SearchStatus EnforcedHillClimbingNoveltySearch::ehc(SearchSpace &current_search_
 		if (current_real_g + heuristic->get_last_bsg().get_real_cost() <= bound)
 			return SOLVED;
 		break;
+	case ConjunctionGenerationStrategy::Result::FAILED:
+		return FAILED;
 	default:
 		std::cerr << "Unknown learning result." << std::endl;
 		utils::exit_with(utils::ExitCode::CRITICAL_ERROR);
@@ -453,6 +455,9 @@ auto EnforcedHillClimbingNoveltySearch::escape_local_minimum() -> SearchStatus {
 
 		current_eval_context = EvaluationContext(current_eval_context.get_state(), &statistics);
 		auto learning_result = generate_conjunctions(*heuristic, ConjunctionGenerationStrategy::Event::LOCAL_MINIMUM, current_eval_context, true, bound - current_real_g);
+		if (learning_result == ConjunctionGenerationStrategy::Result::FAILED)
+			return FAILED;
+
 		if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED && current_real_g + heuristic->get_last_bsg().get_real_cost() <= bound)
 			return SOLVED;
 

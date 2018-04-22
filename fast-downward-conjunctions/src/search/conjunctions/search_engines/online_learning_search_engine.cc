@@ -23,7 +23,7 @@ OnlineLearningSearchEngine::OnlineLearningSearchEngine(const options::Options &o
 auto OnlineLearningSearchEngine::generate_conjunctions(ConjunctionsHeuristic &heuristic, ConjunctionGenerationStrategy::Event event, EvaluationContext &eval_context, bool check_solved, int bound) -> ConjunctionGenerationStrategy::Result {
 	auto begin = learning_timer();
 	learning_timer.resume();
-	auto result = conjunctions_strategy->modify_conjunctions(heuristic, event, state_registry.get_task(), eval_context);
+	auto result = conjunctions_strategy->modify_conjunctions(heuristic, event, state_registry.get_task(), eval_context, &state_registry);
 	if (check_solved && result == ConjunctionGenerationStrategy::Result::SOLVED && (bound == -1 || heuristic.get_last_bsg().get_real_cost() <= bound)) {
 		std::cout << "Solution found!" << std::endl;
 		set_solution(heuristic.get_last_relaxed_plan(), eval_context.get_state());

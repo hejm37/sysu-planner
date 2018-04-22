@@ -130,7 +130,7 @@ auto ConjunctionsHeuristic::compute_result(EvaluationContext &eval_context) -> E
 	if (strategy) {
 		auto conjunction_generation_event = initial_state ? ConjunctionGenerationStrategy::Event::INITIALIZATION : ConjunctionGenerationStrategy::Event::STEP;
 		initial_state = false;
-		auto conjunction_generation_result = strategy->modify_conjunctions(*this, conjunction_generation_event, *task, eval_context);
+		auto conjunction_generation_result = strategy->modify_conjunctions(*this, conjunction_generation_event, *task, eval_context, nullptr);
 		if (conjunction_generation_result == ConjunctionGenerationStrategy::Result::DEAD_END) {
 			if (cache_h_values) {
 				heuristic_cache[eval_context.get_state()].h = DEAD_END;

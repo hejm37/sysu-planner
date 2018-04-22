@@ -4,6 +4,8 @@
 #include <numeric>
 
 #include "conjunctions.h"
+#include "../globals.h"
+#include "../state_registry.h"
 #include "../task_tools.h"
 #include "../utils/timer.h"
 
@@ -212,6 +214,17 @@ inline auto get_applicable_as_intended_sequence_length(const BestSupporterGraph 
 
 inline auto is_valid_plan_in_the_original_task(const BestSupporterGraph &bsg, std::vector<int> state_values, const AbstractTask &task) -> bool {
 	return get_applicable_sequence_length(bsg, state_values, task) == bsg.nodes.size();
+}
+
+inline auto is_valid_plan_in_the_original_task_with_conditional_effects(const BestSupporterGraph &bsg, StateRegistry &state_registry, const GlobalState &state) -> bool {
+	auto current_state = state;
+	for (auto bsg_it = std::rbegin(bsg.nodes); bsg_it != std::rend(bsg.nodes) - 1; ++bsg_it) {
+		const auto &op = bsg_it->action->op->get_global_operator();
+		if (!op->is_applicable(current_state))
+			return false;
+		current_state = state_registry.get_successor_state(current_state, *op);
+	}
+	return test_goal(current_state);
 }
 
 class TimedPrinter {
