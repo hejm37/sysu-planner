@@ -34,11 +34,12 @@ public:
 		MODIFIED,
 		DEAD_END,
 		UNMODIFIED,
+		FAILED,
 		SOLVED
 	};
 
 	// returns true if the set of conjunctions was modified
-	auto modify_conjunctions(ConjunctionsHeuristic &heuristic, Event event, const AbstractTask &task, EvaluationContext &eval_context) -> Result;
+	auto modify_conjunctions(ConjunctionsHeuristic &heuristic, Event event, const AbstractTask &task, EvaluationContext &eval_context, StateRegistry *state_registry) -> Result;
 
 	virtual auto deletes_conjunctions() const -> bool {
 		return false;
@@ -51,19 +52,19 @@ public:
 	virtual void dump_options() const = 0;
 
 protected:
-	virtual auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result {
+	virtual auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result {
 		return Result::UNMODIFIED;
 	}
 
-	virtual auto modify_conjunctions_step(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result {
+	virtual auto modify_conjunctions_step(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result {
 		return Result::UNMODIFIED;
 	}
 
-	virtual auto modify_conjunctions_local_minimum(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result {
+	virtual auto modify_conjunctions_local_minimum(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result {
 		return Result::UNMODIFIED;
 	}
 
-	virtual auto modify_conjunctions_new_best_h(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result {
+	virtual auto modify_conjunctions_new_best_h(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result {
 		return Result::UNMODIFIED;
 	}
 };
@@ -83,7 +84,7 @@ protected:
 	const int conjunctions_per_iteration;
 	const bool check_relaxed_plan;
 
-	auto generate_conjunctions(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, int) -> std::pair<Result, std::vector<FactSet>>;
+	auto generate_conjunctions(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *, int) -> std::pair<Result, std::vector<FactSet>>;
 };
 
 
@@ -99,7 +100,7 @@ public:
 	void dump_options() const override;
 
 protected:
-	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
+	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
 
 	const double conjunction_growth_bound;
 	const double counter_growth_bound;
@@ -119,7 +120,7 @@ public:
 	void dump_options() const override;
 
 private:
-	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
+	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
 
 	void get_all_combinations(std::vector<FactSet> &combinations, const FactSet &base, const int max_size, const AbstractTask &task) const;
 
@@ -138,7 +139,7 @@ public:
 	void dump_options() const override;
 
 private:
-	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
+	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
 
 	const std::string file_name;
 };
@@ -155,7 +156,7 @@ public:
 	void dump_options() const override;
 
 private:
-	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
+	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
 
 	static auto read_count(const std::string &file_name) -> int;
 
@@ -205,8 +206,8 @@ public:
 	auto modifies_conjunctions_at_event(Event) const -> bool override;
 
 private:
-	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
-	auto modify_conjunctions_step(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
+	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
+	auto modify_conjunctions_step(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
 
 	const detail::InitialRemovalMode initial_removal_mode;
 	const detail::RemovalStrategy removal_strategy;
@@ -233,8 +234,8 @@ public:
 	auto modifies_conjunctions_at_event(Event) const -> bool override;
 
 private:
-	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
-	auto modify_conjunctions_step(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
+	auto modify_conjunctions_init(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
+	auto modify_conjunctions_step(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
 
 	const detail::InitialRemovalMode initial_removal_mode;
 	const detail::RemovalStrategy removal_strategy;
@@ -258,7 +259,7 @@ public:
 	void dump_options() const override;
 
 protected:
-	auto modify_conjunctions_local_minimum(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &) -> Result override;
+	auto modify_conjunctions_local_minimum(ConjunctionsHeuristic &, const AbstractTask &, EvaluationContext &, StateRegistry *) -> Result override;
 
 private:
 	const double conjunction_growth_bound;
