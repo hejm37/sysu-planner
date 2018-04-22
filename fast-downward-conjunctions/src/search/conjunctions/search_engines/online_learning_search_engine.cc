@@ -34,6 +34,14 @@ auto OnlineLearningSearchEngine::generate_conjunctions(ConjunctionsHeuristic &he
 }
 
 void OnlineLearningSearchEngine::set_solution(const Plan &partial_plan, const GlobalState &state) {
+#ifndef NDEBUG
+	auto current_state = state;
+	for (auto *op : partial_plan) {
+		assert(op->is_applicable(current_state));
+		current_state = state_registry.get_successor_state(current_state, *op);
+	}
+	assert(test_goal(current_state));
+#endif
 	if (state.get_id() == state_registry.get_initial_state().get_id()) {
 		set_plan(partial_plan);
 	} else {
