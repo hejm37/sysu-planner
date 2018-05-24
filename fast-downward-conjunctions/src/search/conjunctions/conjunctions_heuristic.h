@@ -431,7 +431,7 @@ private:
 	auto compute_hcmax_greedy(const State &) -> int;
 
 	void extract_relaxed_plan();
-	auto select_conjunction_and_action(std::map<int, std::vector<Conjunction *>> &) -> std::pair<Conjunction *, const Action *>;
+	auto select_conjunction_and_action(std::map<cost_t, std::vector<Conjunction *>> &) -> std::pair<Conjunction *, const Action *>;
 
 	// TODO: move to utils
 	void verify_relaxed_plan(const BestSupporterGraph &) const;
