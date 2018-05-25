@@ -717,7 +717,7 @@ auto ConjunctionsHeuristic::compute_hcmax(const State &state) -> int {
 void ConjunctionsHeuristic::extract_relaxed_plan() {
 	current_bsg.clear();
 
-	auto open_conjunctions = std::map<int, std::vector<Conjunction *>>();
+	auto open_conjunctions = std::map<cost_t, std::vector<Conjunction *>>();
 	if (tie_breaking == TieBreaking::CONFLICTS)
 		current_preconditions.clear();
 
@@ -914,7 +914,7 @@ void ConjunctionsHeuristic::extract_relaxed_plan() {
 	}
 }
 
-auto ConjunctionsHeuristic::select_conjunction_and_action(std::map<int, std::vector<Conjunction *>> &open_conjunctions) -> std::pair<Conjunction *, const Action *> {
+auto ConjunctionsHeuristic::select_conjunction_and_action(std::map<cost_t, std::vector<Conjunction *>> &open_conjunctions) -> std::pair<Conjunction *, const Action *> {
 	assert(!open_conjunctions.empty());
 	auto max_it = open_conjunctions.rbegin();
 	auto &candidate_conjunctions = max_it->second;
