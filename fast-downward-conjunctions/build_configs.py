@@ -27,5 +27,5 @@ release64clangnative = release64clang + ['-DNATIVE_BUILD=True']
 release32clangpgonative = release32clang + ['-DUSE_PGO=True', '-DNATIVE_BUILD=True']
 release64clangpgonative = release64clang + ['-DUSE_PGO=True', '-DNATIVE_BUILD=True']
 
-DEFAULT = "release32"
-DEBUG = "debug32"
+DEFAULT = "release64"
+DEBUG = "debug64"

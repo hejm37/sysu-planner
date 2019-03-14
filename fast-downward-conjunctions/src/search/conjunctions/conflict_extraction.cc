@@ -947,16 +947,17 @@ auto ConflictExtraction::ConflictExtractionHelper<ConflictType>::generate_candid
 	auto build_shortest_paths = [&bsg]() -> std::vector<std::vector<std::tuple<BSGIndex, Conjunction *, int>>> {
 		// for each node store the best predecessor, edge label, and cost for each reachable predecessor
 		auto shortest_paths = std::vector<std::vector<std::tuple<BSGIndex, Conjunction *, int>>>(bsg.nodes.size(),
-			std::vector<std::tuple<BSGIndex, Conjunction *, int>>(bsg.nodes.size(), {static_cast<BSGIndex>(-1), nullptr, std::numeric_limits<int>::max()}));
+      std::vector<std::tuple<BSGIndex, Conjunction *, int>>(bsg.nodes.size(), std::make_tuple(static_cast<BSGIndex>(-1), nullptr, std::numeric_limits<int>::max())));
+    // std::vector<std::tuple<BSGIndex, Conjunction *, int>>(bsg.nodes.size(), {static_cast<BSGIndex>(-1), nullptr, std::numeric_limits<int>::max()}));
 		auto update = [&bsg, &shortest_paths](auto index, auto precondition) {
 			assert(precondition->has_supporter());
 			auto predecessor_index = precondition->supporter_pos;
 			for (auto i = index + 1; i < bsg.nodes.size(); ++i)
 				if (std::get<2>(shortest_paths[index][i]) > std::get<2>(shortest_paths[predecessor_index][i]))
-					shortest_paths[index][i] = {predecessor_index, precondition, std::get<2>(shortest_paths[predecessor_index][i]) + 1};
+					shortest_paths[index][i] = std::make_tuple(predecessor_index, precondition, std::get<2>(shortest_paths[predecessor_index][i]) + 1);
 		};
 		for (auto i = bsg.nodes.size() - 1; i != static_cast<BSGIndex>(-1); --i) {
-			shortest_paths[i][i] = {i, nullptr, 0};
+			shortest_paths[i][i] = std::make_tuple(i, nullptr, 0);
 			for (const auto &precondition : bsg[i].precondition_conjunctions) {
 				assert(!precondition->has_supporter() || precondition->supporter_pos > static_cast<int>(i));
 				if (precondition->has_supporter())
