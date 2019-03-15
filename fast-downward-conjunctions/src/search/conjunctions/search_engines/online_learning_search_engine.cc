@@ -30,6 +30,8 @@ auto OnlineLearningSearchEngine::generate_conjunctions(
 	auto begin = learning_timer();
 	learning_timer.resume();
 	auto result = conjunctions_strategy->modify_conjunctions(heuristic, event, state_registry.get_task(), eval_context, &state_registry);
+  // QP assumes that this check is for modifying conjunctions make the heuristic evaluate to 0
+  // therefore a solution found
 	if (check_solved && result == ConjunctionGenerationStrategy::Result::SOLVED && (bound == -1 || heuristic.get_last_bsg().get_real_cost() <= bound)) {
 		std::cout << "Solution found!" << std::endl;
 		set_solution(heuristic.get_last_relaxed_plan(), eval_context.get_state());
