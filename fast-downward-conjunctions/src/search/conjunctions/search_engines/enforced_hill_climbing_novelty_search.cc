@@ -95,13 +95,19 @@ void EnforcedHillClimbingNoveltySearch::reach_state(const GlobalState &parent, c
 void EnforcedHillClimbingNoveltySearch::initialize() {
 	auto initialization_timer = utils::Timer();
 	assert(heuristic);
-	std::cout << "Conducting enforced hill-climbing search with explicit conjunctions, (real) bound = " << bound << std::endl;
+	std::cout << "Conducting enforced hill-climbing search with explicit conjunctions, (real) bound = "
+            << bound << std::endl;
 	if (use_preferred)
-		std::cout << "Using preferred operators for " << (preferred_usage == PreferredUsage::RANK_PREFERRED_FIRST ? "ranking successors" : "pruning") << std::endl;
+		std::cout << "Using preferred operators for "
+              << (preferred_usage == PreferredUsage::RANK_PREFERRED_FIRST ? "ranking successors" : "pruning")
+              << std::endl;
 
-	std::cout << "Breadth first search depth bound: " << bfs_bound << std::endl;
-	std::cout << "Always reevaluate the local minimum neighborhood after adding a conjunction: " << always_reevaluate << std::endl;
-	std::cout << "Cache the heuristic results of known states: " << enable_heuristic_cache << std::endl;
+	std::cout << "Breadth first search depth bound: "
+            << bfs_bound << std::endl;
+	std::cout << "Always reevaluate the local minimum neighborhood after adding a conjunction: "
+            << always_reevaluate << std::endl;
+	std::cout << "Cache the heuristic results of known states: "
+            << enable_heuristic_cache << std::endl;
 	conjunctions_strategy->dump_options();
 
 	auto node = search_space.get_node(current_eval_context.get_state());
@@ -110,7 +116,8 @@ void EnforcedHillClimbingNoveltySearch::initialize() {
 	solved = generate_conjunctions(*heuristic, ConjunctionGenerationStrategy::Event::INITIALIZATION, current_eval_context, true, bound) == ConjunctionGenerationStrategy::Result::SOLVED
 		&& heuristic->get_last_bsg().get_real_cost() <= bound;
 	heuristic->print_statistics();
-	std::cout << "Finished initialization, t = " << initialization_timer << std::endl;
+	std::cout << "Finished initialization, t = "
+            << initialization_timer << std::endl;
 	print_intermediate_statistics(*heuristic);
 
 	start_search_timer();
@@ -138,10 +145,14 @@ void EnforcedHillClimbingNoveltySearch::initialize() {
 auto EnforcedHillClimbingNoveltySearch::get_successors(EvaluationContext &eval_context) -> std::vector<const GlobalOperator *> {
 	auto ops = std::vector<const GlobalOperator *>();
 	if (!use_preferred || preferred_usage == PreferredUsage::RANK_PREFERRED_FIRST) {
-		g_successor_generator->generate_applicable_ops(eval_context.get_state(), ops);
+    // don't use preferred || use preferred and rank preferred first.
+    // First add all applicable actions
+    // if don't use preferred, skip, else mark them
+->generate_applicable_ops(eval_context.get_state(), ops);
 
 		// Mark preferred operators.
 		if (use_preferred && (preferred_usage == PreferredUsage::RANK_PREFERRED_FIRST)) {
+      // initialize it, clear it
 			for (const auto op : ops)
 				op->unmark();
 			if (!enable_heuristic_cache) {
@@ -156,6 +167,8 @@ auto EnforcedHillClimbingNoveltySearch::get_successors(EvaluationContext &eval_c
 			}
 		}
 	} else {
+    // use preferred, (but not) and not rank preferred first.
+    // add only preferred operators
 		if (!enable_heuristic_cache) {
 			for (auto pref_heuristic : preferred_operator_heuristics) {
 				const auto &preferred_ops = eval_context.get_preferred_operators(pref_heuristic);

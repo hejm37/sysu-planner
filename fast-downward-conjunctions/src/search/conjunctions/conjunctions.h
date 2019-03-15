@@ -250,6 +250,7 @@ inline auto is_regressable(const Action &action, const FactSet &facts) -> bool {
 	auto facts_it = facts.begin();
 	auto achieves_some_part = false;
 	for (const auto &fact : eff) {
+    // NOTE: Given that this is sorted, we could use binary search
 		while (facts_it != facts.end() && facts_it->var < fact.var)
 			++facts_it;
 		if (facts_it == facts.end())

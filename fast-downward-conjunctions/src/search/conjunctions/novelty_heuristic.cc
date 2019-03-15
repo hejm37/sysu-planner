@@ -66,6 +66,7 @@ auto NoveltyHeuristic::get_h_values(const GlobalState &state) const -> std::vect
 
 int NoveltyHeuristic::compute_heuristic(const GlobalState &global_state) {
 	auto h_values = get_h_values(global_state);
+  // empty means infinity of one heuristic
 	if (h_values.empty())
 		return 1;
 	auto novel = false;
@@ -75,9 +76,11 @@ int NoveltyHeuristic::compute_heuristic(const GlobalState &global_state) {
 		});
 	};
 	for (auto &conjunction : conjunctions) {
+    // If it has not appeared in novelty conjunction set. Skip
 		if (!is_in_state(conjunction))
 			continue;
 		for (auto i = 0u; i < h_values.size(); ++i) {
+      // NOTE: why update on larger
 			if (conjunction.h_values[i] == -1 || conjunction.h_values[i] < h_values[i]) {
 				update_conjunction(global_state, conjunction, i, h_values[i]);
 				novel = true;
