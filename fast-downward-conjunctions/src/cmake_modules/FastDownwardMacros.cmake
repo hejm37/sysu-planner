@@ -23,7 +23,9 @@ macro(fast_downward_set_compiler_flags)
         ## Configuration-specific flags
         set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fomit-frame-pointer")
         set(CMAKE_CXX_FLAGS_DEBUG "-O3")
-        set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg")
+        # set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg")
+        ## added for linux perf
+        set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg -fno-omit-frame-pointer")
     elseif(MSVC)
         # We force linking to be static because the dynamically linked code is
         # about 10% slower on Linux (see issue67). On Windows this is a compiler
@@ -80,20 +82,20 @@ macro(fast_downward_set_linker_flags)
     else()
         # Any libs we build should be static.
         set(BUILD_SHARED_LIBS FALSE)
-    
+
         # Any libraries that are implicitly added to the end of the linker
         # command should be linked statically.
         set(LINK_SEARCH_END_STATIC TRUE)
-    
+
         # Do not add "-rdynamic" flag.
         set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
         set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
-    
+
         # Only look for static libraries (Windows does not support this).
         if(UNIX)
             set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
         endif()
-    
+
         # Set linker flags to link statically.
         if(CMAKE_COMPILER_IS_GNUCXX)
             set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -g -static -static-libgcc")

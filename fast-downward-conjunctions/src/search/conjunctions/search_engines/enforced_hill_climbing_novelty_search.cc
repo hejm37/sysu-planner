@@ -148,7 +148,7 @@ auto EnforcedHillClimbingNoveltySearch::get_successors(EvaluationContext &eval_c
     // don't use preferred || use preferred and rank preferred first.
     // First add all applicable actions
     // if don't use preferred, skip, else mark them
-->generate_applicable_ops(eval_context.get_state(), ops);
+    g_successor_generator->generate_applicable_ops(eval_context.get_state(), ops);
 
 		// Mark preferred operators.
 		if (use_preferred && (preferred_usage == PreferredUsage::RANK_PREFERRED_FIRST)) {

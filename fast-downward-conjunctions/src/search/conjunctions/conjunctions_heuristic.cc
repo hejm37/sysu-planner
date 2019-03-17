@@ -125,7 +125,6 @@ ConjunctionsHeuristic::~ConjunctionsHeuristic() {
 
 
 // heuristic interface
-
 auto ConjunctionsHeuristic::compute_result(EvaluationContext &eval_context) -> EvaluationResult {
 	if (strategy) {
 		auto conjunction_generation_event = initial_state ? ConjunctionGenerationStrategy::Event::INITIALIZATION : ConjunctionGenerationStrategy::Event::STEP;
@@ -208,7 +207,6 @@ auto ConjunctionsHeuristic::get_last_bsg() -> BestSupporterGraph & {
 
 
 // initialization stuff
-
 auto ConjunctionsHeuristic::get_pairwise_conditional_effect_mutexes(const std::vector<std::pair<FactPair, FactSet>> &conditional_effects) const -> std::vector<boost::dynamic_bitset<>> {
 	auto mutexes = std::vector<boost::dynamic_bitset<>>(conditional_effects.size(), boost::dynamic_bitset<>(conditional_effects.size()));
 	auto set_mutex = [&mutexes](auto i, auto j) { mutexes[i][j] = true; mutexes[j][i] = true; };
@@ -467,7 +465,7 @@ auto ConjunctionsHeuristic::compute_hcadd(const State &state) -> cost_t {
 			conjunction->initially_true = true;
 		}
 	}
-	
+
 	auto h = static_cast<cost_t>(0);
 
 	while (!queue.empty()) {
@@ -1101,7 +1099,6 @@ auto ConjunctionsHeuristic::get_last_relaxed_plan() const -> std::vector<const G
 
 
 // adding new conjunctions and statistics for fact sets
-
 auto ConjunctionsHeuristic::compute_regressions(const FactSet &facts) const -> std::vector<std::pair<const Action *, std::vector<FactPair>>> {
 	assert(!facts.empty());
 	auto regressions = std::vector<std::pair<const Action *, std::vector<FactPair>>>();
@@ -1389,7 +1386,7 @@ auto ConjunctionsHeuristic::get_cost_in_current_state(const FactSet &facts) cons
 	for (const auto *action : potentially_supporting_actions) {
 		if (is_regressable_and_mutex_free(*action, facts, *task)) {
 			auto regression_conjunctions = get_non_dominated_conjunctions(compute_regression(*action, facts), conjunctions_containing_fact);
-			auto cost = best_supporter_function == BestSupporterFunction::HCADD || best_supporter_function == BestSupporterFunction::HCADD_ALTERNATIVE ? 
+			auto cost = best_supporter_function == BestSupporterFunction::HCADD || best_supporter_function == BestSupporterFunction::HCADD_ALTERNATIVE ?
 				std::accumulate(std::begin(regression_conjunctions), std::end(regression_conjunctions), static_cast<cost_t>(0),
 					[compare](auto cost, auto regression_conjunction) { return std::max({cost, regression_conjunction->cost, regression_conjunction->cost + cost}, compare); }) :
 				std::accumulate(std::begin(regression_conjunctions), std::end(regression_conjunctions), static_cast<cost_t>(0),

@@ -27,5 +27,9 @@ release64clangnative = release64clang + ['-DNATIVE_BUILD=True']
 release32clangpgonative = release32clang + ['-DUSE_PGO=True', '-DNATIVE_BUILD=True']
 release64clangpgonative = release64clang + ['-DUSE_PGO=True', '-DNATIVE_BUILD=True']
 
+# added for profiling
+profile32 = ["-DCMAKE_BUILD_TYPE=Profile"] + release32[1:]
+profile64 = profile32 + ["-DALLOW_64_BIT=True", "-DCMAKE_CXX_FLAGS='-m64'"]
+
 DEFAULT = "release64"
 DEBUG = "debug64"

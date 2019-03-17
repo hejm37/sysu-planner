@@ -57,9 +57,13 @@ EnforcedHillClimbingSearch::EnforcedHillClimbingSearch(const options::Options &o
 	heuristics.insert(preferred_operator_heuristics.begin(), preferred_operator_heuristics.end());
 	heuristics.insert(heuristic);
 	const auto &initial_state = state_registry.get_initial_state();
+  // Note, heuristic gets shadowed here
 	for (auto heuristic : heuristics)
 		heuristic->notify_initial_state(initial_state);
-	use_preferred = std::find(preferred_operator_heuristics.begin(), preferred_operator_heuristics.end(), heuristic) != preferred_operator_heuristics.end();
+
+  use_preferred = std::find(preferred_operator_heuristics.begin(),
+                            preferred_operator_heuristics.end(),
+                            heuristic) != preferred_operator_heuristics.end();
 	auto g_evaluator = static_cast<ScalarEvaluator *>(new g_evaluator::GEvaluator());
 	if (!use_preferred || preferred_usage == PreferredUsage::PRUNE_BY_PREFERRED) {
 		Options options;
