@@ -222,14 +222,17 @@ private:
 	// all conjunctions (including singletons)
 	std::vector<Conjunction *> conjunctions;
 
-	auto get_potentially_supporting_actions(const FactSet &facts) const->std::vector<const Action *>;
-	auto compute_regressions(const FactSet &facts) const->std::vector<std::pair<const Action *, std::vector<FactPair>>>;
+	auto get_potentially_supporting_actions(const FactSet &facts) const ->
+    std::vector<const Action *>;
+	auto compute_regressions(const FactSet &facts) const ->
+    std::vector<std::pair<const Action *, std::vector<FactPair>>>;
 
 	// list of conjunctions c for each fact f where f in c
+  // NOTE: can optimize for a better data structure
 	std::vector<std::vector<std::vector<Conjunction *>>> conjunctions_containing_fact;
 	void initialize_conjunctions_containing_fact();
 
-	
+
 	std::vector<CounterGroup> counter_groups;
 	std::vector<CounterGroupIndex> unused_counter_groups;
 
@@ -351,7 +354,7 @@ private:
 	const BestSupporterFunction best_supporter_function;
 	const TieBreaking tie_breaking;
 	utils::RandomNumberGenerator rng;
-	
+
 	// statistics
 	int num_singletons;
 	int num_counters;
@@ -421,7 +424,7 @@ private:
 	static void print_overflow_warning();
 
 	void reset_heuristic();
-	
+
 	auto compute_best_supporter_function(const State &) -> cost_t;
 
 	auto compute_hcadd(const State &) -> cost_t;

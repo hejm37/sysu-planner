@@ -207,8 +207,14 @@ auto ConjunctionsHeuristic::get_last_bsg() -> BestSupporterGraph & {
 
 
 // initialization stuff
-auto ConjunctionsHeuristic::get_pairwise_conditional_effect_mutexes(const std::vector<std::pair<FactPair, FactSet>> &conditional_effects) const -> std::vector<boost::dynamic_bitset<>> {
-	auto mutexes = std::vector<boost::dynamic_bitset<>>(conditional_effects.size(), boost::dynamic_bitset<>(conditional_effects.size()));
+auto ConjunctionsHeuristic::get_pairwise_conditional_effect_mutexes(
+  const std::vector<std::pair<FactPair, FactSet>> &conditional_effects) const ->
+  std::vector<boost::dynamic_bitset<>>
+{
+  // std::pair<FactPair, FactSet>, FactPair -> Effect, FactSet -> Conditions
+	auto mutexes = std::vector<boost::dynamic_bitset<>>(
+    conditional_effects.size(),
+    boost::dynamic_bitset<>(conditional_effects.size()));
 	auto set_mutex = [&mutexes](auto i, auto j) { mutexes[i][j] = true; mutexes[j][i] = true; };
 	for (auto i = 0u; i < conditional_effects.size(); ++i) {
 		for (auto j = i + 1; j < conditional_effects.size(); ++j) {
@@ -218,11 +224,15 @@ auto ConjunctionsHeuristic::get_pairwise_conditional_effect_mutexes(const std::v
 				continue;
 			}
 			// check if the combined preconditions are mutex
-			if (std::any_of(std::begin(conditional_effects[i].second), std::end(conditional_effects[i].second), [&conditional_effects, j, this](const auto &pre1) {
-				return std::any_of(std::begin(conditional_effects[j].second), std::end(conditional_effects[j].second), [&pre1, this](const auto &pre2) {
-					return task->are_facts_mutex(pre1, pre2);
-				});
-			}))
+			if (std::any_of(std::begin(conditional_effects[i].second),
+                      std::end(conditional_effects[i].second),
+                      [&conditional_effects, j, this](const auto &pre1) {
+                        return std::any_of(std::begin(conditional_effects[j].second),
+                                           std::end(conditional_effects[j].second),
+                                           [&pre1, this](const auto &pre2) {
+                                             return task->are_facts_mutex(pre1, pre2);
+                                           });
+                      }))
 				set_mutex(i, j);
 			// NOTE: we intentionally do NOT check if any prevails are mutex with effects here, because
 			// adding other conditional effects that overwrite the prevail can resolve the mutex
@@ -231,7 +241,11 @@ auto ConjunctionsHeuristic::get_pairwise_conditional_effect_mutexes(const std::v
 	return mutexes;
 }
 
-void ConjunctionsHeuristic::get_conditional_effect_subsets_recursive(const std::vector<std::pair<FactPair, FactSet>> &conditional_effects, std::size_t current_index, const std::vector<boost::dynamic_bitset<>> &conditional_effect_mutexes, std::vector<std::vector<std::size_t>> &subsets) {
+void ConjunctionsHeuristic::get_conditional_effect_subsets_recursive(
+  const std::vector<std::pair<FactPair, FactSet>> &conditional_effects,
+  std::size_t current_index,
+  const std::vector<boost::dynamic_bitset<>> &conditional_effect_mutexes,
+  std::vector<std::vector<std::size_t>> &subsets) {
 	// the empty set should have been added outside
 	assert(std::find(std::begin(subsets), std::end(subsets), std::vector<std::size_t>()) != std::end(subsets));
 	if (current_index >= conditional_effects.size())
@@ -239,19 +253,32 @@ void ConjunctionsHeuristic::get_conditional_effect_subsets_recursive(const std::
 	const auto size = subsets.size();
 	for (auto i = 0u; i < size; ++i) {
 		const auto &subset = subsets[i];
-		if (std::any_of(std::begin(subset), std::end(subset), [&conditional_effects, &conditional_effect_mutexes, current_index](auto other_index) {
-			return conditional_effect_mutexes[current_index][other_index] || conditional_effects[current_index].first == conditional_effects[other_index].first;
-		}))
+		if (std::any_of(
+          std::begin(subset), std::end(subset),
+          [&conditional_effects, &conditional_effect_mutexes, current_index](auto other_index) {
+            return
+              conditional_effect_mutexes[current_index][other_index] ||
+              conditional_effects[current_index].first == conditional_effects[other_index].first;
+          }))
 			// skip if mutex or same effect
 			continue;
 		auto combined = subset;
 		combined.push_back(current_index);
 		subsets.push_back(combined);
 	}
-	get_conditional_effect_subsets_recursive(conditional_effects, current_index + 1, conditional_effect_mutexes, subsets);
+	get_conditional_effect_subsets_recursive(
+    conditional_effects,
+    current_index + 1,
+    conditional_effect_mutexes,
+    subsets);
 }
 
-auto ConjunctionsHeuristic::get_action_instances(const FactSet &preconditions, const FactSet &effects, const std::vector<std::pair<FactPair, FactSet>> &conditional_effects) const -> std::vector<std::pair<FactSet, FactSet>> {
+auto ConjunctionsHeuristic::get_action_instances(
+  const FactSet &preconditions,
+  const FactSet &effects,
+  const std::vector<std::pair<FactPair, FactSet>> &conditional_effects) const ->
+  std::vector<std::pair<FactSet, FactSet>>
+{
 	assert(std::is_sorted(std::begin(preconditions), std::end(preconditions)));
 	assert(std::is_sorted(std::begin(effects), std::end(effects)));
 	const auto mutexes = get_pairwise_conditional_effect_mutexes(conditional_effects);
@@ -317,14 +344,13 @@ void ConjunctionsHeuristic::initialize_actions() {
 
 	for (auto op_proxy : task_proxy.get_operators()) {
 		auto preconditions = FactSet();
+    auto effects = FactSet();
+    auto conditional_effects = std::vector<std::pair<FactPair, FactSet>>();
 		preconditions.reserve(op_proxy.get_preconditions().size());
-		auto effects = FactSet();
 		effects.reserve(op_proxy.get_effects().size());
 
 		for (auto pre_proxy : op_proxy.get_preconditions())
 			preconditions.emplace_back(pre_proxy.get_pair());
-
-		auto conditional_effects = std::vector<std::pair<FactPair, FactSet>>();
 
 		for (auto i = 0u; i < op_proxy.get_effects().size(); ++i) {
 			const auto &effect = op_proxy.get_effects()[i];
@@ -402,7 +428,6 @@ void ConjunctionsHeuristic::initialize_conjunctions_containing_fact() {
 
 
 // best supporter functions
-
 auto ConjunctionsHeuristic::compute_best_supporter_function(const State &state) -> cost_t {
 	reset_heuristic();
 	switch (best_supporter_function) {
@@ -1099,7 +1124,9 @@ auto ConjunctionsHeuristic::get_last_relaxed_plan() const -> std::vector<const G
 
 
 // adding new conjunctions and statistics for fact sets
-auto ConjunctionsHeuristic::compute_regressions(const FactSet &facts) const -> std::vector<std::pair<const Action *, std::vector<FactPair>>> {
+auto ConjunctionsHeuristic::compute_regressions(const FactSet &facts) const ->
+  std::vector<std::pair<const Action *, std::vector<FactPair>>>
+{
 	assert(!facts.empty());
 	auto regressions = std::vector<std::pair<const Action *, std::vector<FactPair>>>();
 	const auto potentially_supporting_actions = get_potentially_supporting_actions(facts);
@@ -1159,11 +1186,15 @@ void ConjunctionsHeuristic::add_conjunctions(const std::vector<FactSet> &factset
 		for (const auto &facts : factsets)
 			novelty_heuristic->add_conjunction(facts);
 
+  // NOTE: could be placed by std::shared_ptr
 	auto new_conjunctions = std::vector<Conjunction *>();
 	new_conjunctions.reserve(factsets.size());
 
 	for (const auto &facts : factsets)
-		new_conjunctions.push_back(new Conjunction(facts, std::includes(std::begin(goal_facts), std::end(goal_facts), std::begin(facts), std::end(facts))));
+		new_conjunctions.push_back(
+      new Conjunction(facts,
+                      std::includes(std::begin(goal_facts), std::end(goal_facts),
+                                    std::begin(facts), std::end(facts))));
 
 #ifndef NDEBUG
 	std::cout << "adding conjunctions:" << std::endl;
@@ -1337,7 +1368,9 @@ void ConjunctionsHeuristic::add_conjunctions(const std::vector<FactSet> &factset
 	bsg_is_valid = false;
 }
 
-auto ConjunctionsHeuristic::get_potentially_supporting_actions(const FactSet &facts) const -> std::vector<const Action *> {
+auto ConjunctionsHeuristic::get_potentially_supporting_actions(
+  const FactSet &facts) const ->
+  std::vector<const Action *> {
 	auto potentially_supporting_actions = std::vector<const Action *>();
 	for (const auto &fact : facts) {
 		const auto &achieving_actions = actions_by_effects[fact.var][fact.value];
@@ -1346,11 +1379,17 @@ auto ConjunctionsHeuristic::get_potentially_supporting_actions(const FactSet &fa
 		assert(std::is_sorted(std::begin(achieving_actions), std::end(achieving_actions)));
 		assert(std::is_sorted(std::begin(potentially_supporting_actions), std::end(potentially_supporting_actions)));
 		// if the following assertion didn't hold, the iterators could be invalidated during the insertion in set_difference
-		assert(potentially_supporting_actions.capacity() >= potentially_supporting_actions.size() + achieving_actions.size());
-		std::set_difference(std::begin(achieving_actions), std::end(achieving_actions),
-		                    std::begin(potentially_supporting_actions), std::begin(potentially_supporting_actions) + old_size,
+		assert(potentially_supporting_actions.capacity() >=
+           potentially_supporting_actions.size() + achieving_actions.size());
+
+    // NOTE: could try set?
+		std::set_difference(std::begin(achieving_actions),
+                        std::end(achieving_actions),
+		                    std::begin(potentially_supporting_actions),
+                        std::begin(potentially_supporting_actions) + old_size,
 		                    std::back_inserter(potentially_supporting_actions));
-		std::inplace_merge(std::begin(potentially_supporting_actions), std::begin(potentially_supporting_actions) + old_size,
+		std::inplace_merge(std::begin(potentially_supporting_actions),
+                       std::begin(potentially_supporting_actions) + old_size,
 		                   std::end(potentially_supporting_actions));
 	}
 	assert(std::is_sorted(std::begin(potentially_supporting_actions), std::end(potentially_supporting_actions)));

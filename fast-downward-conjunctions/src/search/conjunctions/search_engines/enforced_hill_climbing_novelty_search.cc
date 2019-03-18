@@ -238,7 +238,9 @@ auto EnforcedHillClimbingNoveltySearch::step() -> SearchStatus {
 SearchStatus EnforcedHillClimbingNoveltySearch::ehc(SearchSpace &current_search_space) {
 	++ehcc_statistics.num_ehc_phases;
 
-	auto result = generate_conjunctions(*heuristic, ConjunctionGenerationStrategy::Event::NEW_BEST_H, current_eval_context, true, bound - current_real_g);
+	auto result = generate_conjunctions(*heuristic,
+                                      ConjunctionGenerationStrategy::Event::NEW_BEST_H,
+                                      current_eval_context, true, bound - current_real_g);
 	switch (result) {
 	case ConjunctionGenerationStrategy::Result::DEAD_END:
 		return handle_safe_dead_end();

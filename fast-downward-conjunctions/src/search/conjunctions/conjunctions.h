@@ -30,6 +30,7 @@ struct BSGNode;
 struct Action {
 	Action(int id, const OperatorProxy &op, FactSet pre, FactSet eff, int cost) :
 		id(id),
+    // NOTE: This can be changed to std::make_unique
 		op(new OperatorProxy(op)),
 		pre(std::move(pre)),
 		eff(std::move(eff)),
@@ -83,6 +84,7 @@ struct CounterGroup {
 
 using CounterGroupIndex = std::vector<CounterGroup>::size_type;
 
+// Two Conjunction, different namespace
 struct Conjunction {
 
 	Conjunction(FactSet facts, bool is_subgoal) :
