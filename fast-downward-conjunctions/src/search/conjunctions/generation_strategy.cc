@@ -24,7 +24,13 @@ ConjunctionGenerationStrategy::ConjunctionGenerationStrategy(const options::Opti
 
 ConjunctionGenerationStrategy::~ConjunctionGenerationStrategy() {}
 
-auto ConjunctionGenerationStrategy::modify_conjunctions(ConjunctionsHeuristic &heuristic, Event event, const AbstractTask &task, EvaluationContext &eval_context, StateRegistry *state_registy) -> Result {
+// NOTE: This switch-case can be avoided with tag dispatch
+auto ConjunctionGenerationStrategy::modify_conjunctions(ConjunctionsHeuristic &heuristic,
+                                                        Event event,
+                                                        const AbstractTask &task,
+                                                        EvaluationContext &eval_context,
+                                                        StateRegistry *state_registy) -> Result
+{
 	switch (event) {
 	case Event::INITIALIZATION:
 		return modify_conjunctions_init(heuristic, task, eval_context, state_registy);
@@ -56,7 +62,12 @@ void ConflictExtractionStrategy::add_options(options::OptionParser &parser) {
 	parser.add_option<bool>("check_relaxed_plan", "check if relaxed plan is valid before attempting to learn conjunctions", "true");
 }
 
-auto ConflictExtractionStrategy::generate_conjunctions(ConjunctionsHeuristic &heuristic, const AbstractTask &task, EvaluationContext &eval_context, StateRegistry *state_registry, int count) -> std::pair<Result, std::vector<FactSet>> {
+auto ConflictExtractionStrategy::generate_conjunctions(ConjunctionsHeuristic &heuristic,
+                                                       const AbstractTask &task,
+                                                       EvaluationContext &eval_context,
+                                                       StateRegistry *state_registry,
+                                                       int count) -> std::pair<Result, std::vector<FactSet>>
+{
 	auto &cached_result = const_cast<HeuristicCache &>(eval_context.get_cache())[&heuristic];
 	if (!cached_result.is_uninitialized())
 		cached_result = EvaluationResult();

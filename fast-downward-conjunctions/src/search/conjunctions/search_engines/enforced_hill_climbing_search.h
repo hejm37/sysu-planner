@@ -117,6 +117,7 @@ private:
 	// counter for how often learning was repeated in the same state in a row
 	int learning_stagnation_counter;
 
+  // heuristic value and preferred operator
 	std::unordered_map<StateID, std::pair<int, std::vector<const GlobalOperator *>>> heuristic_cache;
 
 	void update_eval_context(EvaluationContext &eval_context, const decltype(heuristic_cache)::mapped_type &cache_entry);

@@ -308,7 +308,8 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
       // If lower h value or goal found
       // switch to next smaller h value state or goal state
       // else expand the state with lowest h value
-			if (h < current_eval_context.get_heuristic_value(heuristic) || (h == 0 && test_goal(eval_context.get_state()))) {
+			if (h < current_eval_context.get_heuristic_value(heuristic) ||
+          (h == 0 && test_goal(eval_context.get_state()))) {
 				learning_stagnation_counter = 0;
 				current_unsafe_dead_ends.clear();
 				bfs_lowest_h_value = std::numeric_limits<int>::max();
@@ -327,6 +328,7 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 					auto current_parent_node = search_space.get_node(current_state);
 					auto successor = state_registry.get_successor_state(current_state, *op);
 					auto successor_node = search_space.get_node(successor);
+          // why??? QP
 					if (successor_node.is_new())
 						successor_node.open(current_parent_node, op);
 					current_state = successor;
@@ -437,11 +439,14 @@ auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
 			return TIMEOUT;
 
 		current_eval_context = EvaluationContext(current_eval_context.get_state(), &statistics);
-		auto learning_result = generate_conjunctions(*heuristic, ConjunctionGenerationStrategy::Event::LOCAL_MINIMUM, current_eval_context, true, bound - current_real_g);
+		auto learning_result = generate_conjunctions(*heuristic,
+                                                 ConjunctionGenerationStrategy::Event::LOCAL_MINIMUM,
+                                                 current_eval_context, true, bound - current_real_g);
 		if (learning_result == ConjunctionGenerationStrategy::Result::FAILED)
 			return FAILED;
 
-		if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED && current_real_g + heuristic->get_last_bsg().get_real_cost() <= bound)
+		if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED &&
+        current_real_g + heuristic->get_last_bsg().get_real_cost() <= bound)
 			return SOLVED;
 
 		if (learning_result == ConjunctionGenerationStrategy::Result::MODIFIED) {
@@ -452,17 +457,20 @@ auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
 
 		check_timer_and_print_intermediate_statistics(*heuristic);
 
-		if (learning_result == ConjunctionGenerationStrategy::Result::DEAD_END || current_eval_context.is_heuristic_infinite(heuristic)) {
+		if (learning_result == ConjunctionGenerationStrategy::Result::DEAD_END ||
+        current_eval_context.is_heuristic_infinite(heuristic)) {
 			++ehcc_statistics.num_dead_ends_during_learning;
 			return handle_safe_dead_end();
 		}
 
-		assert(learning_result == ConjunctionGenerationStrategy::Result::MODIFIED
-			|| (learning_result == ConjunctionGenerationStrategy::Result::SOLVED && current_real_g + heuristic->get_last_bsg().get_real_cost() > bound));
+		assert(learning_result == ConjunctionGenerationStrategy::Result::MODIFIED ||
+           (learning_result == ConjunctionGenerationStrategy::Result::SOLVED &&
+            current_real_g + heuristic->get_last_bsg().get_real_cost() > bound));
 
 		const auto &result = current_eval_context.get_result(heuristic);
 		if (enable_heuristic_cache)
-			heuristic_cache[current_eval_context.get_state().get_id()] = {result.get_h_value(), result.get_preferred_operators()};
+			heuristic_cache[current_eval_context.get_state().get_id()] = {result.get_h_value(),
+                                                                    result.get_preferred_operators()};
 		if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED && !modified) {
 			auto insertion_result = current_solved_unmodified.insert(current_eval_context.get_state().get_id());
 			if (!insertion_result.second)
@@ -473,7 +481,10 @@ auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
 			return handle_search_space_exhaustion();
 		if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED)
 			break;
-	} while (!(always_reevaluate || conjunctions_strategy->deletes_conjunctions() || heuristic->get_counter_growth() > max_growth) && current_eval_context.get_heuristic_value(heuristic) <= bfs_lowest_h_value);
+	} while (!(always_reevaluate ||
+             conjunctions_strategy->deletes_conjunctions() ||
+             heuristic->get_counter_growth() > max_growth) &&
+           current_eval_context.get_heuristic_value(heuristic) <= bfs_lowest_h_value);
 
 	return IN_PROGRESS;
 }
