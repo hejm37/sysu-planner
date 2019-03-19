@@ -384,6 +384,8 @@ void ConjunctionsHeuristic::initialize_actions() {
 			assert(std::is_sorted(std::begin(action_instance.second), std::end(action_instance.second)));
 			actions.push_back(new Action(id++, op_proxy, std::move(action_instance.first), std::move(action_instance.second), op_proxy.get_cost()));
 			assert(no_relaxed_plan_extraction || op_proxy.get_cost() != 0);
+      // every newly created Action, we push back each action pointer
+      // by this action effected the fact
 			for (const auto &effect : actions.back()->eff)
 				actions_by_effects[effect.var][effect.value].push_back(actions.back());
 		}
@@ -1137,22 +1139,39 @@ auto ConjunctionsHeuristic::compute_regressions(const FactSet &facts) const ->
 		auto regression = compute_regression(*action, facts);
 		// prune regression sets if an easier (i.e. subset) regression already exists
 		auto exists_simpler_regression = false;
-		for (auto other_regression_it = std::begin(regressions); other_regression_it != std::end(regressions);) {
+    // NOTE: A substantial speed up segment. Need an algorithm
+    // original run time approximation: O(#Action x #regression x #factSet x log(#factSet))
+    // Proposal 1: utilize a dynamic bit set, represent each factSet as binary
+    // 1. Perform "&" operator on the two set of factSet,
+    // 2. if the number of "on" or "1" equals any of the two sets,
+    //    then one is the subset of another.
+    // Time Complexity: O(#Action x #regression x #factSet)
+    // May utilize SIMD?
+    // Proposal 2: Another data structure
+    // Haven't come up with it, maybe too complex to be fast
+    // Proposal 3: The std::vector::erase() in the loop, should change
+    // Since copying / moving a bunch of std::pair<const Action *, std::vector>
+    // is actually quite expensive, copy it out, and copy it back maybe a better option
+    // Although, it doesn't show up in perf as very high, just leave it be now
+		for (auto other_regression_it = std::begin(regressions);
+         other_regression_it != std::end(regressions);
+         ++other_regression_it;) {
 			const auto &other_regression = other_regression_it->second;
 			if (regression.size() < other_regression.size()) {
-				if (std::includes(std::begin(other_regression), std::end(other_regression), std::begin(regression), std::end(regression))
-						&& other_regression_it->first->cost >= action->cost) {
+				if (std::includes(std::begin(other_regression), std::end(other_regression),
+                          std::begin(regression), std::end(regression))
+            && other_regression_it->first->cost >= action->cost) {
 					other_regression_it = regressions.erase(other_regression_it);
 					continue;
 				}
 			} else {
-				if (std::includes(std::begin(regression), std::end(regression), std::begin(other_regression), std::end(other_regression))
+				if (std::includes(std::begin(regression), std::end(regression),
+                          std::begin(other_regression), std::end(other_regression))
 						&& other_regression_it->first->cost <= action->cost) {
 					exists_simpler_regression = true;
 					break;
 				}
 			}
-			++other_regression_it;
 		}
 		if (!exists_simpler_regression)
 			regressions.emplace_back(action, std::move(regression));
@@ -1186,7 +1205,7 @@ void ConjunctionsHeuristic::add_conjunctions(const std::vector<FactSet> &factset
 		for (const auto &facts : factsets)
 			novelty_heuristic->add_conjunction(facts);
 
-  // NOTE: could be placed by std::shared_ptr
+  // NOTE: could be replaced by std::shared_ptr
 	auto new_conjunctions = std::vector<Conjunction *>();
 	new_conjunctions.reserve(factsets.size());
 
@@ -1368,10 +1387,14 @@ void ConjunctionsHeuristic::add_conjunctions(const std::vector<FactSet> &factset
 	bsg_is_valid = false;
 }
 
+/*
+  Any action
+ */
 auto ConjunctionsHeuristic::get_potentially_supporting_actions(
   const FactSet &facts) const ->
   std::vector<const Action *> {
 	auto potentially_supporting_actions = std::vector<const Action *>();
+  // Find every action if it has the fact in its effect vector
 	for (const auto &fact : facts) {
 		const auto &achieving_actions = actions_by_effects[fact.var][fact.value];
 		potentially_supporting_actions.reserve(potentially_supporting_actions.size() + achieving_actions.size());
@@ -1383,11 +1406,10 @@ auto ConjunctionsHeuristic::get_potentially_supporting_actions(
            potentially_supporting_actions.size() + achieving_actions.size());
 
     // NOTE: could try set?
-		std::set_difference(std::begin(achieving_actions),
-                        std::end(achieving_actions),
-		                    std::begin(potentially_supporting_actions),
-                        std::begin(potentially_supporting_actions) + old_size,
-		                    std::back_inserter(potentially_supporting_actions));
+		std::set_difference(
+      std::begin(achieving_actions), std::end(achieving_actions),
+      std::begin(potentially_supporting_actions), std::begin(potentially_supporting_actions) + old_size,
+      std::back_inserter(potentially_supporting_actions));
 		std::inplace_merge(std::begin(potentially_supporting_actions),
                        std::begin(potentially_supporting_actions) + old_size,
 		                   std::end(potentially_supporting_actions));

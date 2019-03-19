@@ -183,6 +183,9 @@ auto EnforcedHillClimbingSearch::get_successors(EvaluationContext &eval_context)
 	return ops;
 }
 
+/*
+ * Expand over one state
+ */
 void EnforcedHillClimbingSearch::expand(EvaluationContext &eval_context, SearchSpace &current_search_space) {
 	auto node = current_search_space.get_node(eval_context.get_state());
 	assert(!search_space.get_node(eval_context.get_state()).is_dead_end());
@@ -302,6 +305,9 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 				return SOLVED;
 			}
 
+      // If lower h value or goal found
+      // switch to next smaller h value state or goal state
+      // else expand the state with lowest h value
 			if (h < current_eval_context.get_heuristic_value(heuristic) || (h == 0 && test_goal(eval_context.get_state()))) {
 				learning_stagnation_counter = 0;
 				current_unsafe_dead_ends.clear();
@@ -346,6 +352,7 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 		return handle_search_space_exhaustion();
 	if (!current_unsafe_dead_ends.empty() && !k_cutoff)
 		return escape_potential_dead_end();
+  // being cut off, or it's empty
 	current_unsafe_dead_ends.clear();
 	return escape_local_minimum();
 }
@@ -500,6 +507,12 @@ void EnforcedHillClimbingSearch::mark_current_state_unsafe_dead_end() {
 	unsafe_dead_ends.insert(current_eval_context.get_state().get_id());
 }
 
+/*
+ * Option Continue: continue learning by passing IN_PROGRESS, or fail if no learning
+ * Option Restart or BackJump:
+ * If unsafe_pruning_sse: need to mark unsafe_dead_end or dead_end
+ * Then decide restart or backjump
+ */
 auto EnforcedHillClimbingSearch::handle_search_space_exhaustion() -> SearchStatus {
 	++ehcc_statistics.num_search_space_exhaustion;
 	if (search_space_exhaustion == SearchSpaceExhaustion::CONTINUE)
@@ -518,6 +531,11 @@ auto EnforcedHillClimbingSearch::handle_search_space_exhaustion() -> SearchStatu
 	return search_space_exhaustion == SearchSpaceExhaustion::RESTART ? restart() : escape_potential_dead_end();
 }
 
+/*
+ * Escape dead end by backjumping to its previous parent node.
+ * If the parent node is a dead end, keep going back until the
+ * initialial state.
+ */
 auto EnforcedHillClimbingSearch::escape_dead_end(const SearchNode &node) -> SearchStatus {
 	++ehcc_statistics.total_dead_end_backjump_length;
 	assert(node.is_dead_end());
