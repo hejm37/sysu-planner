@@ -45,7 +45,7 @@ EnforcedHillClimbingSearch::EnforcedHillClimbingSearch(const options::Options &o
 	learning_stagnation_threshold(opts.get<int>("learning_stagnation_threshold")),
 	learning_stagnation_restart(opts.get<bool>("learning_stagnation_restart")),
 	search_space_exhaustion(SearchSpaceExhaustion(opts.get_enum("search_space_exhaustion"))),
-  learning_stagnation(LearningStagnation(opts.get_enum("learning_stagnation")))
+  learning_stagnation(LearningStagnation(opts.get_enum("learning_stagnation"))),
 	unsafe_pruning_sse(opts.get<bool>("unsafe_pruning_sse")),
 	unsafe_pruning_ls(opts.get<bool>("unsafe_pruning_ls")),
 	force_unsafe_pruning_complete(opts.get<bool>("force_unsafe_pruning_complete")),
