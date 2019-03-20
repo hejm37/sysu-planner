@@ -685,6 +685,12 @@ static auto _parse(OptionParser &parser) -> SearchEngine * {
 	parser.add_option<int>("seed", "Random seed (for successor randomization). If this is set to -1, an arbitrary seed is used.", "-1");
 	parser.add_option<int>("learning_stagnation_threshold", "how often learning must be repeated in the same state to trigger a learning stagnation", "infinity", Bounds("0", "infinity"));
 	parser.add_option<bool>("learning_stagnation_restart", "do a full restart when learning stagnation is triggered", "false");
+  parser.add_enum_option("learning_stagnation", {"RESTART", "BACKJUMP", "PROCEED"},
+                         "search behavior whenever the learning has stagnated and have exceeded the learning_stagnation_threshold, it will do a restart, backjump or proceed", "PROCEED",
+                         {"Restart search from the initial state.",
+                          "Go back along the current path to the most recent state that does not have an infinite heuristic value.",
+                          "Pick the next best state and perform next BFS phase on it."
+                          ""});
 	parser.add_enum_option("search_space_exhaustion", {"CONTINUE", "RESTART", "BACKJUMP"},
 		"search behavior whenever the BFS search space is fully explored but not caused by cutting off at k or the state on which learning is called is recognized as a dead end", "RESTART",
 		{"With learning, continue with the next BFS phase at the current state after learning one conjunction. Withouth learning, search fails in this case.",

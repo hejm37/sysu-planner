@@ -137,10 +137,17 @@ private:
 	const int learning_stagnation_threshold;
 	const bool learning_stagnation_restart;
 
+  enum class LearningStagnationOption {
+    RESTART,
+    BACKJUMP,
+    PROCEED
+  };
+
 	enum class SearchSpaceExhaustion {
 		CONTINUE,
 		RESTART,
-		BACKJUMP
+		BACKJUMP,
+    PROCEED
 	} const search_space_exhaustion;
 
 	void mark_current_state_unsafe_dead_end();
