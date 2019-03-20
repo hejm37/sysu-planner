@@ -207,7 +207,7 @@ auto EnforcedHillClimbingSearch::step() -> SearchStatus {
 	last_num_expanded = statistics.get_expanded();
 	search_progress.check_progress(current_eval_context);
 
-	if (solved || check_goal_and_set_plan(current_eval_context.get_state()))
+	if (solved || check_goal_and_set_plan(current_eval_context.get_state()``))
 		return SOLVED;
 	if (heuristic->get_counter_growth() > max_growth)
 		return FAILED;
@@ -354,7 +354,7 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 		return handle_search_space_exhaustion();
 	if (!current_unsafe_dead_ends.empty() && !k_cutoff)
 		return escape_potential_dead_end();
-  // being cut off, or it's empty
+  // being cut off, or it's empty(explore all local search space)
 	current_unsafe_dead_ends.clear();
 	return escape_local_minimum();
 }
@@ -405,6 +405,10 @@ auto EnforcedHillClimbingSearch::evaluate_if_neccessary(EvaluationContext &eval_
 }
 
 // attempt to escape local minimum by generating conjunctions
+// learning_stagnation_restart is basically an option when
+// the planner has reached learning_stagnation_threshold, it will
+// perform backjump or restart, basically middle groud between
+// CONTINUE and RESTART, or CONTINUE and BACKJUMP
 auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
 	++online_learning_statistics.num_learning_calls;
 	ehcc_statistics.total_stagnation_count += learning_stagnation_counter;
@@ -571,16 +575,22 @@ auto EnforcedHillClimbingSearch::escape_dead_end(const SearchNode &node) -> Sear
 	return IN_PROGRESS;
 }
 
+// Each node in the local search space has exhausted its search space
+// not because of k_cutoff and not explore all possible node(current_unsafe_dead_ends not empty)
+// clear the current_unsafe_dead_ends and repeat if it's the initial state
+// don't clear, go back to parent
 auto EnforcedHillClimbingSearch::escape_potential_dead_end() -> SearchStatus {
 	auto node = search_space.get_node(current_eval_context.get_state());
 	assert(!node.is_dead_end());
 	learning_stagnation_counter = 0;
 	const auto parent_id = node.get_parent_state_id();
+  // Initial state
 	if (parent_id == StateID::no_state) {
 		current_unsafe_dead_ends.clear();
 		unsafe_dead_ends.clear();
 		return IN_PROGRESS;
 	}
+  // Back to its parent
 	current_eval_context = EvaluationContext(state_registry.lookup_state(parent_id), &statistics);
 	auto h = evaluate_if_neccessary(current_eval_context);
 	if (h == EvaluationResult::INFTY) {
