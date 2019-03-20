@@ -207,7 +207,7 @@ auto EnforcedHillClimbingSearch::step() -> SearchStatus {
 	last_num_expanded = statistics.get_expanded();
 	search_progress.check_progress(current_eval_context);
 
-	if (solved || check_goal_and_set_plan(current_eval_context.get_state()``))
+	if (solved || check_goal_and_set_plan(current_eval_context.get_state()))
 		return SOLVED;
 	if (heuristic->get_counter_growth() > max_growth)
 		return FAILED;
@@ -479,6 +479,7 @@ auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
 			auto insertion_result = current_solved_unmodified.insert(current_eval_context.get_state().get_id());
 			if (!insertion_result.second)
 				// fail if we arrived in this state more than once without making progress
+        // why? QP
 				return FAILED;
 		}
 		if (!k_cutoff)
