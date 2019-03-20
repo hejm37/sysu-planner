@@ -39,7 +39,11 @@ public:
 	};
 
 	// returns true if the set of conjunctions was modified
-	auto modify_conjunctions(ConjunctionsHeuristic &heuristic, Event event, const AbstractTask &task, EvaluationContext &eval_context, StateRegistry *state_registry) -> Result;
+	auto modify_conjunctions(ConjunctionsHeuristic &heuristic,
+                           Event event,
+                           const AbstractTask &task,
+                           EvaluationContext &eval_context,
+                           StateRegistry *state_registry) -> Result;
 
 	virtual auto deletes_conjunctions() const -> bool {
 		return false;

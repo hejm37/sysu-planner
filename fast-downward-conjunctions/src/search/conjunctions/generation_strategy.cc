@@ -57,9 +57,13 @@ ConflictExtractionStrategy::ConflictExtractionStrategy(const options::Options &o
 ConflictExtractionStrategy::~ConflictExtractionStrategy() {}
 
 void ConflictExtractionStrategy::add_options(options::OptionParser &parser) {
-	parser.add_option<std::shared_ptr<ConflictExtraction>>("conflict_extraction", "Conflict extraction method.", "conflict_extraction()");
-	parser.add_option<int>("conjunctions_per_iteration", "maximum number of conjunctions to be added in each iteration", "1");
-	parser.add_option<bool>("check_relaxed_plan", "check if relaxed plan is valid before attempting to learn conjunctions", "true");
+	parser.add_option<std::shared_ptr<ConflictExtraction>>("conflict_extraction",
+                                                         "Conflict extraction method.",
+                                                         "conflict_extraction()");
+	parser.add_option<int>("conjunctions_per_iteration",
+                         "maximum number of conjunctions to be added in each iteration", "1");
+	parser.add_option<bool>("check_relaxed_plan",
+                          "check if relaxed plan is valid before attempting to learn conjunctions", "true");
 }
 
 auto ConflictExtractionStrategy::generate_conjunctions(ConjunctionsHeuristic &heuristic,
@@ -71,18 +75,24 @@ auto ConflictExtractionStrategy::generate_conjunctions(ConjunctionsHeuristic &he
 	auto &cached_result = const_cast<HeuristicCache &>(eval_context.get_cache())[&heuristic];
 	if (!cached_result.is_uninitialized())
 		cached_result = EvaluationResult();
-	if (!heuristic.is_last_bsg_valid_for_state(eval_context.get_state()) && eval_context.is_heuristic_infinite(&heuristic))
+	if (!heuristic.is_last_bsg_valid_for_state(eval_context.get_state()) &&
+      eval_context.is_heuristic_infinite(&heuristic))
 		return {Result::DEAD_END, {}};
 	auto &bsg = heuristic.get_last_bsg();
 
-	assert(!bsg.nodes.empty() && "The last bsg should not be empty here. Make sure the 'cache_estimates' option of the heuristic is disabled.");
+	assert(!bsg.nodes.empty() &&
+         "The last bsg should not be empty here. Make sure the 'cache_estimates' option of the heuristic is disabled.");
 
-	if (state_registry && check_relaxed_plan && is_valid_plan_in_the_original_task_with_conditional_effects(bsg, *state_registry, eval_context.get_state()))
+	if (state_registry &&
+      check_relaxed_plan &&
+      is_valid_plan_in_the_original_task_with_conditional_effects(bsg, *state_registry, eval_context.get_state()))
 		return {Result::SOLVED, {}};
 
 	auto conjunctions_to_add = conflict_extraction->generate_candidate_conjunctions(task, bsg, heuristic, count);
-	assert(!conjunctions_to_add.empty() || is_valid_plan_in_the_original_task(bsg, eval_context.get_state().get_values(), task));
-	return {conjunctions_to_add.empty() ? (state_registry && is_valid_plan_in_the_original_task_with_conditional_effects(bsg, *state_registry, eval_context.get_state()) ? Result::SOLVED : Result::FAILED) : Result::MODIFIED, std::move(conjunctions_to_add)};
+	assert(!conjunctions_to_add.empty() ||
+         is_valid_plan_in_the_original_task(bsg, eval_context.get_state().get_values(), task));
+
+  return {conjunctions_to_add.empty() ? (state_registry && is_valid_plan_in_the_original_task_with_conditional_effects(bsg, *state_registry, eval_context.get_state()) ? Result::SOLVED : Result::FAILED) : Result::MODIFIED, std::move(conjunctions_to_add)};
 }
 
 void ConflictExtractionStrategy::dump_options() const {
@@ -114,7 +124,10 @@ auto GenerateAllBoundedSize::modify_conjunctions_init(ConjunctionsHeuristic &heu
 	return all_combinations.empty() ? Result::UNMODIFIED : Result::MODIFIED;
 }
 
-void GenerateAllBoundedSize::get_all_combinations(std::vector<FactSet> &combinations, const FactSet &base, const int max_size, const AbstractTask &task) const{
+void GenerateAllBoundedSize::get_all_combinations(std::vector<FactSet> &combinations,
+                                                  const FactSet &base,
+                                                  const int max_size,
+                                                  const AbstractTask &task) const{
 	auto next_fact = [&task](const FactPair &f) -> FactPair {
 		if (f.value + 1 < task.get_variable_domain_size(f.var))
 			return {f.var, f.value + 1};
@@ -160,7 +173,10 @@ GenerateInitially::GenerateInitially(const options::Options &opts) :
 
 GenerateInitially::~GenerateInitially() {}
 
-auto GenerateInitially::modify_conjunctions_init(ConjunctionsHeuristic &heuristic, const AbstractTask &task, EvaluationContext &eval_context, StateRegistry *state_registry) -> Result {
+auto GenerateInitially::modify_conjunctions_init(ConjunctionsHeuristic &heuristic,
+                                                 const AbstractTask &task,
+                                                 EvaluationContext &eval_context,
+                                                 StateRegistry *state_registry) -> Result {
 	auto modified = false;
 	auto end_time = std::chrono::steady_clock::now() + std::chrono::seconds(learning_time);
 	while (std::chrono::steady_clock::now() < end_time
