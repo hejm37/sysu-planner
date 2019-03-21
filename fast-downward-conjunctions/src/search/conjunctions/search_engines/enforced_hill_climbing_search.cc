@@ -312,6 +312,7 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
       // else expand the state with lowest h value
 			if (h < current_eval_context.get_heuristic_value(heuristic) ||
           (h == 0 && test_goal(eval_context.get_state()))) {
+
 				learning_stagnation_counter = 0;
 				current_unsafe_dead_ends.clear();
 				bfs_lowest_h_value = std::numeric_limits<int>::max();
@@ -537,6 +538,7 @@ auto EnforcedHillClimbingSearch::escape_local_minimum(SearchSpace &current_searc
 auto EnforcedHillClimbingSearch::proceed_with_no_better_state(SearchSpace &current_search_space)
     -> SearchStatus {
 
+  ++ehcc_statistics.total_proceed_no_better;
   learning_stagnation_counter = 0;
   auto next_best_context = EvaluationContext(
     state_registry.lookup_state(next_best_state_id), &statistics);
@@ -779,6 +781,9 @@ void EnforcedHillClimbingSearch::print_statistics() const {
               << " - Avg. Expansions: "
               << static_cast<double>(total_expansions) / phases << std::endl;
   }
+  if (learning_stagnation == LearningStagnation::PROCEED)
+    std::cout << "Number of times to proceed with dfs style: "
+              << ehcc_statistics.total_proceed_no_better << '\n';
 }
 
 static auto _parse(OptionParser &parser) -> SearchEngine * {

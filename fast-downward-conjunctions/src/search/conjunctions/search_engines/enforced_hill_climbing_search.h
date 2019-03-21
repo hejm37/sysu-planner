@@ -74,7 +74,8 @@ private:
 			num_saved_evaluations(0),
 			num_search_space_exhaustion(0),
 			num_dead_ends(0),
-			total_dead_end_backjump_length(0) {}
+			total_dead_end_backjump_length(0),
+      total_proceed_no_better(0) {}
 
 		int num_ehc_phases;
 		int num_dead_ends_during_learning;
@@ -85,6 +86,7 @@ private:
 		int num_search_space_exhaustion;
 		int num_dead_ends;
 		int total_dead_end_backjump_length;
+    int total_proceed_no_better;
 
 		auto get_avg_expansions_per_ehc_phase(int num_total_expansions) const -> double {
 			return num_ehc_phases != 0 ? num_total_expansions / static_cast<double>(num_ehc_phases) : 0.;

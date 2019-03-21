@@ -1154,8 +1154,7 @@ auto ConjunctionsHeuristic::compute_regressions(const FactSet &facts) const ->
     // is actually quite expensive, copy it out, and copy it back maybe a better option
     // Although, it doesn't show up in perf as very high, just leave it be now
 		for (auto other_regression_it = std::begin(regressions);
-         other_regression_it != std::end(regressions);
-         ++other_regression_it) {
+         other_regression_it != std::end(regressions);) {
 			const auto &other_regression = other_regression_it->second;
 			if (regression.size() < other_regression.size()) {
 				if (std::includes(std::begin(other_regression), std::end(other_regression),
@@ -1172,6 +1171,8 @@ auto ConjunctionsHeuristic::compute_regressions(const FactSet &facts) const ->
 					break;
 				}
 			}
+      // can't be put inside, since there is a continue in there
+      ++other_regression_it;
 		}
 		if (!exists_simpler_regression)
 			regressions.emplace_back(action, std::move(regression));
