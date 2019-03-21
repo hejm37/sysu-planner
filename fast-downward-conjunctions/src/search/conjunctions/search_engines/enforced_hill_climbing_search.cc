@@ -362,7 +362,7 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 		return escape_potential_dead_end();
   // being cut off, or it's empty(explore all local search space)
 	current_unsafe_dead_ends.clear();
-	return escape_local_minimum();
+	return escape_local_minimum(current_search_space);
 }
 
 void EnforcedHillClimbingSearch::update_eval_context(EvaluationContext &eval_context, const decltype(heuristic_cache)::mapped_type &cache_entry) {
@@ -415,7 +415,7 @@ auto EnforcedHillClimbingSearch::evaluate_if_neccessary(EvaluationContext &eval_
 // the planner has reached learning_stagnation_threshold, it will
 // perform backjump or restart, basically middle groud between
 // CONTINUE and RESTART, or CONTINUE and BACKJUMP
-auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
+auto EnforcedHillClimbingSearch::escape_local_minimum(SearchSpace &current_search_space) -> SearchStatus {
   ++online_learning_statistics.num_learning_calls;
   ehcc_statistics.total_stagnation_count += learning_stagnation_counter;
   ehcc_statistics.max_stagnation_count = std::max(
@@ -460,7 +460,7 @@ auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
         case LearningStagnation::BACKJUMP:
           return restart_in_parent();
         case LearningStagnation::PROCEED:
-          return proceed_with_no_better_state();
+          return proceed_with_no_better_state(current_search_space);
           //return
         default:
           std::cerr << "Unknown Learning Stagnation Option." << std::endl;
@@ -534,23 +534,50 @@ auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
 	return IN_PROGRESS;
 }
 
-auto EnforcedHillClimbingSearch::proceed_with_no_better_state()
+auto EnforcedHillClimbingSearch::proceed_with_no_better_state(SearchSpace &current_search_space)
     -> SearchStatus {
-  // auto node = current_search_space.get_node(current_eval_context.get_state());
+
   learning_stagnation_counter = 0;
-  auto current_node = search_space.get_node(current_eval_context.get_state());
-  // don't want to go through its parent node again
-  excluded_states.insert(current_node.get_state_id());
-  current_eval_context =
-    EvaluationContext(state_registry.lookup_state(next_best_state_id), &statistics);
-  auto h = evaluate_if_neccessary(current_eval_context);
+  auto next_best_context = EvaluationContext(
+    state_registry.lookup_state(next_best_state_id), &statistics);
+  auto h = evaluate_if_neccessary(next_best_context);
   if (h == EvaluationResult::INFTY)
     return handle_safe_dead_end();
-  current_real_g = search_space.get_node(current_eval_context.get_state()).get_real_g();
+
+  // bfs_lowest_h_value = std::numeric_limits<int>::max();
+  auto local_plan = Plan();
+  current_search_space.trace_path(
+    state_registry.lookup_state(next_best_state_id), local_plan);
+
+  auto current_state = current_eval_context.get_state();
+  for (const auto op : local_plan) {
+    auto current_parent_node = search_space.get_node(current_state);
+    auto successor = state_registry.get_successor_state(current_state, *op);
+    auto successor_node = search_space.get_node(successor);
+    if (successor_node.is_new())
+      successor_node.open(current_parent_node, op);
+
+    current_state = successor;
+    current_real_g = successor_node.get_real_g();
+  }
+
+  current_eval_context = next_best_context;
+  open_list->clear();
   assert(!enable_heuristic_cache ||
-    heuristic_cache.find(current_eval_context.get_state().get_id()) !=
-    std::end(heuristic_cache));
+    heuristic_cache.find(next_best_state_id) != std::end(heuristic_cache));
   return IN_PROGRESS;
+  // auto current_node = search_space.get_node(current_eval_context.get_state());
+  // // excluded_states.insert(current_node.get_state_id());
+  // current_eval_context =
+  //   EvaluationContext(state_registry.lookup_state(next_best_state_id), &statistics);
+  // auto h = evaluate_if_neccessary(current_eval_context);
+  // if (h == EvaluationResult::INFTY)
+  //   return handle_safe_dead_end();
+  // current_real_g = search_space.get_node(current_eval_context.get_state()).get_real_g();
+  // assert(!enable_heuristic_cache ||
+  //   heuristic_cache.find(current_eval_context.get_state().get_id()) !=
+  //   std::end(heuristic_cache));
+  // return IN_PROGRESS;
 }
 
 auto EnforcedHillClimbingSearch::handle_safe_dead_end() -> SearchStatus {

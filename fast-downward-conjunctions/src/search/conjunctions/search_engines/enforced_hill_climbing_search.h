@@ -101,9 +101,9 @@ private:
 	auto evaluate_if_neccessary(EvaluationContext &eval_context, const GlobalState &parent_state, const GlobalOperator &last_op) -> int;
 	auto evaluate_if_neccessary(EvaluationContext &eval_context) -> int;
 
-	auto escape_local_minimum() -> SearchStatus;
+	auto escape_local_minimum(SearchSpace &) -> SearchStatus;
 
-  auto proceed_with_no_better_state() -> SearchStatus;
+  auto proceed_with_no_better_state(SearchSpace &) -> SearchStatus;
 	auto handle_safe_dead_end() -> SearchStatus;
 	auto handle_search_space_exhaustion() -> SearchStatus;
 
