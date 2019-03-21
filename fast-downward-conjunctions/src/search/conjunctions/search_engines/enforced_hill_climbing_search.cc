@@ -538,7 +538,6 @@ auto EnforcedHillClimbingSearch::proceed_with_no_better_state()
     -> SearchStatus {
   // auto node = current_search_space.get_node(current_eval_context.get_state());
   learning_stagnation_counter = 0;
-  // auto next_best_node = search_space.get_node();
   auto current_node = search_space.get_node(current_eval_context.get_state());
   // don't want to go through its parent node again
   excluded_states.insert(current_node.get_state_id());
