@@ -25,7 +25,7 @@ macro(fast_downward_set_compiler_flags)
         set(CMAKE_CXX_FLAGS_DEBUG "-O3")
         # set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg")
         ## added for linux perf
-        set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg -fno-omit-frame-pointer")
+        set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg -fverbose-asm -fno-omit-frame-pointer")
     elseif(MSVC)
         # We force linking to be static because the dynamically linked code is
         # about 10% slower on Linux (see issue67). On Windows this is a compiler

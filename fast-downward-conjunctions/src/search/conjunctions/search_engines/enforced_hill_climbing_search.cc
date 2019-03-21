@@ -34,6 +34,7 @@ EnforcedHillClimbingSearch::EnforcedHillClimbingSearch(const options::Options &o
 	bfs_bound(opts.get<int>("bfs_bound")),
 	learning_stagnation_counter(0),
 	heuristic_cache(),
+  next_best_state_id(StateID::no_state),
 	bfs_lowest_h_value(std::numeric_limits<int>::max()),
 	solved(false),
 	k_cutoff(false),
@@ -341,7 +342,11 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 
 				return IN_PROGRESS;
 			} else {
-				bfs_lowest_h_value = std::min(bfs_lowest_h_value, h);
+        if (bfs_lowest_h_value > h) {
+          next_best_state_id = eval_context.get_state().get_id();
+          bfs_lowest_h_value = h;
+        }
+				// bfs_lowest_h_value = std::min(bfs_lowest_h_value, h);
 				expand(eval_context, current_search_space);
 			}
 		}
@@ -411,75 +416,109 @@ auto EnforcedHillClimbingSearch::evaluate_if_neccessary(EvaluationContext &eval_
 // perform backjump or restart, basically middle groud between
 // CONTINUE and RESTART, or CONTINUE and BACKJUMP
 auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
-	++online_learning_statistics.num_learning_calls;
-	ehcc_statistics.total_stagnation_count += learning_stagnation_counter;
-	ehcc_statistics.max_stagnation_count = std::max(ehcc_statistics.max_stagnation_count, learning_stagnation_counter);
+  ++online_learning_statistics.num_learning_calls;
+  ehcc_statistics.total_stagnation_count += learning_stagnation_counter;
+  ehcc_statistics.max_stagnation_count = std::max(
+      ehcc_statistics.max_stagnation_count, learning_stagnation_counter);
 
-	if (learning_stagnation_counter > 0)
-		++ehcc_statistics.num_no_better_state_after_learning;
+  if (learning_stagnation_counter > 0)
+    ++ehcc_statistics.num_no_better_state_after_learning;
 
-	if (learning_stagnation_counter >= learning_stagnation_threshold) {
-		// learning is called in the same phase/state as the last time, i.e. we could not find a better state after improving the heuristic
-		if (unsafe_pruning_ls && !force_unsafe_pruning_complete) {
-			if (current_eval_context.get_state().get_id() == state_registry.get_initial_state().get_id())
-				return FAILED;
-			auto node = search_space.get_node(current_eval_context.get_state());
-			node.mark_as_dead_end();
-			statistics.inc_dead_ends();
-			return learning_stagnation_restart ? restart() : escape_dead_end(node);
-		}
-		if (unsafe_pruning_ls)
-			mark_current_state_unsafe_dead_end();
-		if (!learning_stagnation_restart)
-			excluded_states.clear();
-		if (current_eval_context.get_state().get_id() != state_registry.get_initial_state().get_id())
-			return learning_stagnation_restart ? restart() : restart_in_parent();
-	}
+  if (learning_stagnation_counter >= learning_stagnation_threshold) {
+    // learning is called in the same phase/state as the last time, i.e. we
+    // could not find a better state after improving the heuristic
+    if (unsafe_pruning_ls && !force_unsafe_pruning_complete) {
+      if (current_eval_context.get_state().get_id() ==
+          state_registry.get_initial_state().get_id())
+        return FAILED;
+      auto node = search_space.get_node(current_eval_context.get_state());
+      node.mark_as_dead_end();
+      statistics.inc_dead_ends();
+      switch (learning_stagnation) {
+        case LearningStagnation::RESTART:
+          return restart();
+        case LearningStagnation::BACKJUMP:
+          return escape_dead_end(node);
+        // since it's a dead end, just use backjump
+        case LearningStagnation::PROCEED:
+          return escape_dead_end(node);
+        default:
+          std::cerr << "Unknown Learning Stagnation Option." << std::endl;
+          utils::exit_with(utils::ExitCode::CRITICAL_ERROR);
+      }
+      // return learning_stagnation_restart ? restart() : escape_dead_end(node);
+    }
+    if (unsafe_pruning_ls)
+      mark_current_state_unsafe_dead_end();
+    if (!learning_stagnation_restart)
+      excluded_states.clear();
+    if (current_eval_context.get_state().get_id() !=
+      state_registry.get_initial_state().get_id()) {
+      switch (learning_stagnation) {
+        case LearningStagnation::RESTART:
+          return restart();
+        case LearningStagnation::BACKJUMP:
+          return restart_in_parent();
+        case LearningStagnation::PROCEED:
+          return proceed_with_no_better_state();
+          //return
+        default:
+          std::cerr << "Unknown Learning Stagnation Option." << std::endl;
+          utils::exit_with(utils::ExitCode::CRITICAL_ERROR);
+      }
+      // return learning_stagnation_restart ? restart() : restart_in_parent();
+    }
+  }
 
-	++learning_stagnation_counter;
-	auto modified = false;
+  ++learning_stagnation_counter;
+  auto modified = false;
 
-	do {
-		if (is_time_expired())
-			return TIMEOUT;
+  do {
+    if (is_time_expired())
+      return TIMEOUT;
 
-		current_eval_context = EvaluationContext(current_eval_context.get_state(), &statistics);
-		auto learning_result = generate_conjunctions(*heuristic,
-                                                 ConjunctionGenerationStrategy::Event::LOCAL_MINIMUM,
-                                                 current_eval_context, true, bound - current_real_g);
-		if (learning_result == ConjunctionGenerationStrategy::Result::FAILED)
-			return FAILED;
+    current_eval_context =
+        EvaluationContext(current_eval_context.get_state(), &statistics);
+    auto learning_result = generate_conjunctions(
+        *heuristic, ConjunctionGenerationStrategy::Event::LOCAL_MINIMUM,
+        current_eval_context, true, bound - current_real_g);
+    if (learning_result == ConjunctionGenerationStrategy::Result::FAILED)
+      return FAILED;
 
-		if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED &&
+    if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED &&
         current_real_g + heuristic->get_last_bsg().get_real_cost() <= bound)
-			return SOLVED;
+      return SOLVED;
 
-		if (learning_result == ConjunctionGenerationStrategy::Result::MODIFIED) {
-			modified = true;
-			heuristic_cache.clear();
-			current_solved_unmodified.clear();
-		}
+    if (learning_result == ConjunctionGenerationStrategy::Result::MODIFIED) {
+      modified = true;
+      heuristic_cache.clear();
+      current_solved_unmodified.clear();
+    }
 
-		check_timer_and_print_intermediate_statistics(*heuristic);
+    check_timer_and_print_intermediate_statistics(*heuristic);
 
-		if (learning_result == ConjunctionGenerationStrategy::Result::DEAD_END ||
+    if (learning_result == ConjunctionGenerationStrategy::Result::DEAD_END ||
         current_eval_context.is_heuristic_infinite(heuristic)) {
-			++ehcc_statistics.num_dead_ends_during_learning;
-			return handle_safe_dead_end();
-		}
+      ++ehcc_statistics.num_dead_ends_during_learning;
+      return handle_safe_dead_end();
+    }
 
-		assert(learning_result == ConjunctionGenerationStrategy::Result::MODIFIED ||
-           (learning_result == ConjunctionGenerationStrategy::Result::SOLVED &&
-            current_real_g + heuristic->get_last_bsg().get_real_cost() > bound));
+    assert(
+        learning_result == ConjunctionGenerationStrategy::Result::MODIFIED ||
+        (learning_result == ConjunctionGenerationStrategy::Result::SOLVED &&
+         current_real_g + heuristic->get_last_bsg().get_real_cost() > bound));
 
-		const auto &result = current_eval_context.get_result(heuristic);
-		if (enable_heuristic_cache)
-			heuristic_cache[current_eval_context.get_state().get_id()] = {result.get_h_value(),
-                                                                    result.get_preferred_operators()};
-		if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED && !modified) {
-			auto insertion_result = current_solved_unmodified.insert(current_eval_context.get_state().get_id());
-			if (!insertion_result.second)
-				// fail if we arrived in this state more than once without making progress
+    const auto &result = current_eval_context.get_result(heuristic);
+    if (enable_heuristic_cache)
+      heuristic_cache[current_eval_context.get_state().get_id()] = {
+          result.get_h_value(), result.get_preferred_operators()};
+    if (learning_result == ConjunctionGenerationStrategy::Result::SOLVED &&
+        !modified) {
+      auto insertion_result = current_solved_unmodified.insert(
+          current_eval_context.get_state().get_id());
+      if (!insertion_result.second)
+        // fail if we arrived in this state more than once without making
+        // progress
         // why? QP
 				return FAILED;
 		}
@@ -493,6 +532,26 @@ auto EnforcedHillClimbingSearch::escape_local_minimum() -> SearchStatus {
            current_eval_context.get_heuristic_value(heuristic) <= bfs_lowest_h_value);
 
 	return IN_PROGRESS;
+}
+
+auto EnforcedHillClimbingSearch::proceed_with_no_better_state()
+    -> SearchStatus {
+  // auto node = current_search_space.get_node(current_eval_context.get_state());
+  learning_stagnation_counter = 0;
+  // auto next_best_node = search_space.get_node();
+  auto current_node = search_space.get_node(current_eval_context.get_state());
+  // don't want to go through its parent node again
+  excluded_states.insert(current_node.get_state_id());
+  current_eval_context =
+    EvaluationContext(state_registry.lookup_state(next_best_state_id), &statistics);
+  auto h = evaluate_if_neccessary(current_eval_context);
+  if (h == EvaluationResult::INFTY)
+    return handle_safe_dead_end();
+  current_real_g = search_space.get_node(current_eval_context.get_state()).get_real_g();
+  assert(!enable_heuristic_cache ||
+    heuristic_cache.find(current_eval_context.get_state().get_id()) !=
+    std::end(heuristic_cache));
+  return IN_PROGRESS;
 }
 
 auto EnforcedHillClimbingSearch::handle_safe_dead_end() -> SearchStatus {
@@ -618,99 +677,175 @@ auto EnforcedHillClimbingSearch::restart() -> SearchStatus {
 }
 
 auto EnforcedHillClimbingSearch::restart_in_parent() -> SearchStatus {
-	assert(current_eval_context.get_state().get_id() != state_registry.get_initial_state().get_id());
-	learning_stagnation_counter = 0;
-	auto node = search_space.get_node(current_eval_context.get_state());
-	excluded_states.insert(node.get_state_id());
-	const auto parent_id = node.get_parent_state_id();
-	assert(parent_id != StateID::no_state);
-	const auto &parent_state = state_registry.lookup_state(parent_id);
-	current_eval_context = EvaluationContext(parent_state, &statistics);
-	auto h = evaluate_if_neccessary(current_eval_context);
-	if (h == EvaluationResult::INFTY)
-		return handle_safe_dead_end();
-	current_real_g = search_space.get_node(current_eval_context.get_state()).get_real_g();
-	assert(!enable_heuristic_cache || heuristic_cache.find(current_eval_context.get_state().get_id()) != std::end(heuristic_cache));
-	return IN_PROGRESS;
+  assert(current_eval_context.get_state().get_id() !=
+         state_registry.get_initial_state().get_id());
+  learning_stagnation_counter = 0;
+  auto node = search_space.get_node(current_eval_context.get_state());
+  excluded_states.insert(node.get_state_id());
+  const auto parent_id = node.get_parent_state_id();
+  assert(parent_id != StateID::no_state);
+  const auto &parent_state = state_registry.lookup_state(parent_id);
+  current_eval_context = EvaluationContext(parent_state, &statistics);
+  auto h = evaluate_if_neccessary(current_eval_context);
+  if (h == EvaluationResult::INFTY)
+    return handle_safe_dead_end();
+  current_real_g =
+      search_space.get_node(current_eval_context.get_state()).get_real_g();
+  assert(!enable_heuristic_cache ||
+         heuristic_cache.find(current_eval_context.get_state().get_id()) !=
+             std::end(heuristic_cache));
+  return IN_PROGRESS;
 }
 
 void EnforcedHillClimbingSearch::print_ehcc_statistics() const {
-	std::cout << "EHC Phases: " << ehcc_statistics.num_ehc_phases << std::endl;
-	std::cout << "Average expansions per EHC phase: " << ehcc_statistics.get_avg_expansions_per_ehc_phase(statistics.get_expanded()) << std::endl;
-	std::cout << "Dead ends during learning: " << ehcc_statistics.num_dead_ends_during_learning << std::endl;
-	std::cout << "Dead ends during learning or backjumping: " << ehcc_statistics.num_dead_ends << std::endl;
-	std::cout << "No better state after learning: " << ehcc_statistics.num_no_better_state_after_learning << std::endl;
-	std::cout << "Max learning stagnation count: " << ehcc_statistics.max_stagnation_count << std::endl;
-	std::cout << "Average learning stagnation count: " << ehcc_statistics.get_avg_stagnation_count(online_learning_statistics.num_learning_calls) << std::endl;
-	std::cout << "Evaluations saved by buffering: " << ehcc_statistics.num_saved_evaluations << std::endl;
-	std::cout << "Exhausted search space: " << ehcc_statistics.num_search_space_exhaustion << std::endl;
-	std::cout << "Average dead end backjump length: " << (ehcc_statistics.num_dead_ends != 0 ? ehcc_statistics.total_dead_end_backjump_length / static_cast<double>(ehcc_statistics.num_dead_ends) : 0.0) << std::endl;
+  std::cout << "EHC Phases: " << ehcc_statistics.num_ehc_phases << std::endl;
+  std::cout << "Average expansions per EHC phase: "
+            << ehcc_statistics.get_avg_expansions_per_ehc_phase(
+                   statistics.get_expanded())
+            << std::endl;
+  std::cout << "Dead ends during learning: "
+            << ehcc_statistics.num_dead_ends_during_learning << std::endl;
+  std::cout << "Dead ends during learning or backjumping: "
+            << ehcc_statistics.num_dead_ends << std::endl;
+  std::cout << "No better state after learning: "
+            << ehcc_statistics.num_no_better_state_after_learning << std::endl;
+  std::cout << "Max learning stagnation count: "
+            << ehcc_statistics.max_stagnation_count << std::endl;
+  std::cout << "Average learning stagnation count: "
+            << ehcc_statistics.get_avg_stagnation_count(
+                   online_learning_statistics.num_learning_calls)
+            << std::endl;
+  std::cout << "Evaluations saved by buffering: "
+            << ehcc_statistics.num_saved_evaluations << std::endl;
+  std::cout << "Exhausted search space: "
+            << ehcc_statistics.num_search_space_exhaustion << std::endl;
+  std::cout << "Average dead end backjump length: "
+            << (ehcc_statistics.num_dead_ends != 0
+                    ? ehcc_statistics.total_dead_end_backjump_length /
+                          static_cast<double>(ehcc_statistics.num_dead_ends)
+                    : 0.0)
+            << std::endl;
 }
 
-void EnforcedHillClimbingSearch::print_intermediate_statistics(const ConjunctionsHeuristic &heuristic) const {
-	OnlineLearningSearchEngine::print_intermediate_statistics(heuristic);
-	print_ehcc_statistics();
+void EnforcedHillClimbingSearch::print_intermediate_statistics(
+    const ConjunctionsHeuristic &heuristic) const {
+  OnlineLearningSearchEngine::print_intermediate_statistics(heuristic);
+  print_ehcc_statistics();
 }
-
 
 void EnforcedHillClimbingSearch::print_statistics() const {
-	statistics.print_detailed_statistics();
-	print_intermediate_statistics(*heuristic);
+  statistics.print_detailed_statistics();
+  print_intermediate_statistics(*heuristic);
 
-	std::cout << "EHC phases: " << ehcc_statistics.num_ehc_phases << std::endl;
-	if (ehcc_statistics.num_ehc_phases != 0)
-		std::cout << "Average expansions per EHC phase: " << ehcc_statistics.get_avg_expansions_per_ehc_phase(statistics.get_expanded()) << std::endl;
+  std::cout << "EHC phases: " << ehcc_statistics.num_ehc_phases << std::endl;
+  if (ehcc_statistics.num_ehc_phases != 0)
+    std::cout << "Average expansions per EHC phase: "
+              << ehcc_statistics.get_avg_expansions_per_ehc_phase(
+                     statistics.get_expanded())
+              << std::endl;
 
-	for (const auto &count : d_counts) {
-		int depth = count.first;
-		int phases = count.second.first;
-		assert(phases != 0);
-		int total_expansions = count.second.second;
-		std::cout << "EHC phases of depth " << depth << ": " << phases << " - Avg. Expansions: " << static_cast<double>(total_expansions) / phases << std::endl;
-	}
+  for (const auto &count : d_counts) {
+    int depth = count.first;
+    int phases = count.second.first;
+    assert(phases != 0);
+    int total_expansions = count.second.second;
+    std::cout << "EHC phases of depth " << depth << ": " << phases
+              << " - Avg. Expansions: "
+              << static_cast<double>(total_expansions) / phases << std::endl;
+  }
 }
 
 static auto _parse(OptionParser &parser) -> SearchEngine * {
-	parser.document_synopsis("Lazy enforced hill-climbing", "");
-	parser.add_option<Heuristic *>("h", "heuristic used for search, must be of type ConjunctionsHeuristic");
-	parser.add_option<bool>("no_learning", "exit instead of learning", "false");
-	parser.add_option<bool>("restart_in_dead_ends", "Do a full restart if the current state is safely recognized as a dead end; "
-		"otherwise just go back to the last state along the path that is not the current state and does not have heuristic value infinity. This can happen in two ways: "
-		"1. Without learning, the entire local search space is exhausted around the current best state. "
-		"2. The current best state might have heuristic value infinity after learning new conjunctions.", "true");
-	parser.add_option<int>("bfs_bound", "lookahead bound for breadth first search", "3");
-	parser.add_option<bool>("always_reevaluate", "always reevaluate the local minimum neighborhood after adding a conjunction", "false");
-	parser.add_option<bool>("enable_heuristic_cache", "buffer the heuristic results of known states", "true");
-	parser.add_option<bool>("randomize_successors", "randomize successors before inserting them into the open list", "true");
-	// random seed (only relevant with enabled successor randomization)
-	parser.add_option<int>("seed", "Random seed (for successor randomization). If this is set to -1, an arbitrary seed is used.", "-1");
-	parser.add_option<int>("learning_stagnation_threshold", "how often learning must be repeated in the same state to trigger a learning stagnation", "infinity", Bounds("0", "infinity"));
-	parser.add_option<bool>("learning_stagnation_restart", "do a full restart when learning stagnation is triggered", "false");
-  parser.add_enum_option("learning_stagnation", {"RESTART", "BACKJUMP", "PROCEED"},
-                         "search behavior whenever the learning has stagnated and have exceeded the learning_stagnation_threshold, it will do a restart, backjump or proceed", "PROCEED",
-                         {"Restart search from the initial state.",
-                          "Go back along the current path to the most recent state that does not have an infinite heuristic value.",
-                          "Pick the next best state and perform next BFS phase on it."
-                          ""});
-	parser.add_enum_option("search_space_exhaustion", {"CONTINUE", "RESTART", "BACKJUMP"},
-		"search behavior whenever the BFS search space is fully explored but not caused by cutting off at k or the state on which learning is called is recognized as a dead end", "RESTART",
-		{"With learning, continue with the next BFS phase at the current state after learning one conjunction. Withouth learning, search fails in this case.",
-		 "Restart search from the initial state.",
-		 "Go back along the current path to the most recent state that does not have an infinite heuristic value.",
-		 "Like backjump, but mark this state as an unsafe dead end. Unsafe dead ends are handled like dead ends (i.e. never explored), but may cause the search to fail although there is a solution, in which case the unsafe dead ends are reset and search is restarted from the initial state."});
-	parser.add_enum_option("preferred_usage", {"PRUNE_BY_PREFERRED", "RANK_PREFERRED_FIRST"}, "preferred operator usage", "PRUNE_BY_PREFERRED");
-	parser.add_option<bool>("unsafe_pruning_sse", "mark states as dead end on search space exhaustion", "false");
-	parser.add_option<bool>("unsafe_pruning_ls", "mark states as dead end on learning stagnation", "false");
-	parser.add_option<bool>("force_unsafe_pruning_complete", "enforce completeness when using unsafe pruning", "false");
-	parser.add_option<double>("max_growth", "fail when reaching this growth bound in the heuristic", "infinity");
-	parser.add_list_option<Heuristic *>("preferred", "use preferred operators of these heuristics", "[]");
-	OnlineLearningSearchEngine::add_options_to_parser(parser);
-	SearchEngine::add_options_to_parser(parser);
-	auto opts = parser.parse();
+  parser.document_synopsis("Lazy enforced hill-climbing", "");
+  parser.add_option<Heuristic *>(
+      "h", "heuristic used for search, must be of type ConjunctionsHeuristic");
+  parser.add_option<bool>("no_learning", "exit instead of learning", "false");
+  parser.add_option<bool>("restart_in_dead_ends",
+                          "Do a full restart if the current state is safely "
+                          "recognized as a dead end; "
+                          "otherwise just go back to the last state along the "
+                          "path that is not the current state and does not "
+                          "have heuristic value infinity. This can happen in "
+                          "two ways: "
+                          "1. Without learning, the entire local search space "
+                          "is exhausted around the current best state. "
+                          "2. The current best state might have heuristic "
+                          "value infinity after learning new conjunctions.",
+                          "true");
+  parser.add_option<int>("bfs_bound",
+                         "lookahead bound for breadth first search", "3");
+  parser.add_option<bool>("always_reevaluate", "always reevaluate the local "
+                                               "minimum neighborhood after "
+                                               "adding a conjunction",
+                          "false");
+  parser.add_option<bool>("enable_heuristic_cache",
+                          "buffer the heuristic results of known states",
+                          "true");
+  parser.add_option<bool>(
+      "randomize_successors",
+      "randomize successors before inserting them into the open list", "true");
+  // random seed (only relevant with enabled successor randomization)
+  parser.add_option<int>("seed", "Random seed (for successor randomization). "
+                                 "If this is set to -1, an arbitrary seed is "
+                                 "used.",
+                         "-1");
+  parser.add_option<int>("learning_stagnation_threshold",
+                         "how often learning must be repeated in the same "
+                         "state to trigger a learning stagnation",
+                         "infinity", Bounds("0", "infinity"));
+  parser.add_option<bool>(
+      "learning_stagnation_restart",
+      "do a full restart when learning stagnation is triggered", "false");
+  parser.add_enum_option(
+      "learning_stagnation", {"RESTART", "BACKJUMP", "PROCEED"},
+      "search behavior whenever the learning has stagnated and have exceeded "
+      "the learning_stagnation_threshold, it will do a restart, backjump or "
+      "proceed",
+      "PROCEED", {"Restart search from the initial state.",
+                  "Go back along the current path to the most recent state "
+                  "that does not have an infinite heuristic value.",
+                  "Pick the next best state and perform next BFS phase on it."
+                  ""});
+  parser.add_enum_option(
+      "search_space_exhaustion", {"CONTINUE", "RESTART", "BACKJUMP"},
+      "search behavior whenever the BFS search space is fully explored but not "
+      "caused by cutting off at k or the state on which learning is called is "
+      "recognized as a dead end",
+      "RESTART", {"With learning, continue with the next BFS phase at the "
+                  "current state after learning one conjunction. Withouth "
+                  "learning, search fails in this case.",
+                  "Restart search from the initial state.",
+                  "Go back along the current path to the most recent state "
+                  "that does not have an infinite heuristic value.",
+                  "Like backjump, but mark this state as an unsafe dead end. "
+                  "Unsafe dead ends are handled like dead ends (i.e. never "
+                  "explored), but may cause the search to fail although there "
+                  "is a solution, in which case the unsafe dead ends are reset "
+                  "and search is restarted from the initial state."});
+  parser.add_enum_option("preferred_usage",
+                         {"PRUNE_BY_PREFERRED", "RANK_PREFERRED_FIRST"},
+                         "preferred operator usage", "PRUNE_BY_PREFERRED");
+  parser.add_option<bool>("unsafe_pruning_sse",
+                          "mark states as dead end on search space exhaustion",
+                          "false");
+  parser.add_option<bool>("unsafe_pruning_ls",
+                          "mark states as dead end on learning stagnation",
+                          "false");
+  parser.add_option<bool>("force_unsafe_pruning_complete",
+                          "enforce completeness when using unsafe pruning",
+                          "false");
+  parser.add_option<double>(
+      "max_growth", "fail when reaching this growth bound in the heuristic",
+      "infinity");
+  parser.add_list_option<Heuristic *>(
+      "preferred", "use preferred operators of these heuristics", "[]");
+  OnlineLearningSearchEngine::add_options_to_parser(parser);
+  SearchEngine::add_options_to_parser(parser);
+  auto opts = parser.parse();
 
-	if (parser.help_mode() || parser.dry_run())
-		return nullptr;
-	return new EnforcedHillClimbingSearch(opts);
+  if (parser.help_mode() || parser.dry_run())
+    return nullptr;
+  return new EnforcedHillClimbingSearch(opts);
 }
 
 static Plugin<SearchEngine> _plugin("ehc_c", _parse);

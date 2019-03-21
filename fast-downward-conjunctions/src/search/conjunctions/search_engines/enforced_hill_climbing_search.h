@@ -103,6 +103,7 @@ private:
 
 	auto escape_local_minimum() -> SearchStatus;
 
+  auto proceed_with_no_better_state() -> SearchStatus;
 	auto handle_safe_dead_end() -> SearchStatus;
 	auto handle_search_space_exhaustion() -> SearchStatus;
 
@@ -122,6 +123,7 @@ private:
 
 	void update_eval_context(EvaluationContext &eval_context, const decltype(heuristic_cache)::mapped_type &cache_entry);
 
+  StateID next_best_state_id;
 	int bfs_lowest_h_value;
 	bool solved;
 
