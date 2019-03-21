@@ -37,7 +37,7 @@ EnforcedHillClimbingSearch::EnforcedHillClimbingSearch(const options::Options &o
   next_best_state_id(StateID::no_state),
 	bfs_lowest_h_value(std::numeric_limits<int>::max()),
 	solved(false),
-	k_cutoff(false),
+	k_cutoff(false), did_you_change(false),
 	no_learning(opts.get<bool>("no_learning")),
 	restart_in_dead_ends(opts.get<bool>("restart_in_dead_ends")),
 	always_reevaluate(opts.get<bool>("always_reevaluate")),
@@ -331,7 +331,7 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 					auto current_parent_node = search_space.get_node(current_state);
 					auto successor = state_registry.get_successor_state(current_state, *op);
 					auto successor_node = search_space.get_node(successor);
-          // why??? QP
+
 					if (successor_node.is_new())
 						successor_node.open(current_parent_node, op);
 					current_state = successor;
@@ -344,6 +344,7 @@ SearchStatus EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) 
 				return IN_PROGRESS;
 			} else {
         if (bfs_lowest_h_value > h) {
+          did_you_change = true;
           next_best_state_id = eval_context.get_state().get_id();
           bfs_lowest_h_value = h;
         }
@@ -538,6 +539,8 @@ auto EnforcedHillClimbingSearch::escape_local_minimum(SearchSpace &current_searc
 auto EnforcedHillClimbingSearch::proceed_with_no_better_state(SearchSpace &current_search_space)
     -> SearchStatus {
 
+  if (!k_cutoff)
+    return handle_search_space_exhaustion();
   ++ehcc_statistics.total_proceed_no_better;
   learning_stagnation_counter = 0;
   auto next_best_context = EvaluationContext(
@@ -546,10 +549,16 @@ auto EnforcedHillClimbingSearch::proceed_with_no_better_state(SearchSpace &curre
   if (h == EvaluationResult::INFTY)
     return handle_safe_dead_end();
 
-  // bfs_lowest_h_value = std::numeric_limits<int>::max();
+  bfs_lowest_h_value = std::numeric_limits<int>::max();
   auto local_plan = Plan();
   current_search_space.trace_path(
     state_registry.lookup_state(next_best_state_id), local_plan);
+  std::cout << local_plan.size() << '\n';
+  if (local_plan.size() == 0)
+    std::cout << std::boolalpha
+              << (next_best_state_id == current_eval_context.get_state().get_id())
+              << ", " << did_you_change
+              << '\n';
 
   auto current_state = current_eval_context.get_state();
   for (const auto op : local_plan) {
@@ -563,6 +572,7 @@ auto EnforcedHillClimbingSearch::proceed_with_no_better_state(SearchSpace &curre
     current_real_g = successor_node.get_real_g();
   }
 
+  did_you_change = false;
   current_eval_context = next_best_context;
   open_list->clear();
   assert(!enable_heuristic_cache ||

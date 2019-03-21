@@ -22,7 +22,7 @@ macro(fast_downward_set_compiler_flags)
 
         ## Configuration-specific flags
         set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fomit-frame-pointer")
-        set(CMAKE_CXX_FLAGS_DEBUG "-O3")
+        set(CMAKE_CXX_FLAGS_DEBUG "-O3 -fverbose-asm -fno-omit-frame-pointer")
         # set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg")
         ## added for linux perf
         set(CMAKE_CXX_FLAGS_PROFILE "-O3 -pg -fverbose-asm -fno-omit-frame-pointer")

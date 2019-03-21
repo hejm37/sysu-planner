@@ -130,6 +130,7 @@ private:
 	bool solved;
 
 	bool k_cutoff;
+  bool did_you_change;
 
 	// settings
 	const bool no_learning;
