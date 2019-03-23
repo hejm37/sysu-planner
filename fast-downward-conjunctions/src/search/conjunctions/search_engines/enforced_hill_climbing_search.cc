@@ -35,7 +35,7 @@ EnforcedHillClimbingSearch::EnforcedHillClimbingSearch(
       learning_stagnation_counter(0), heuristic_cache(),
       next_best_state_id(StateID::no_state),
       bfs_lowest_h_value(std::numeric_limits<int>::max()), solved(false),
-      k_cutoff(false), did_you_change(false),
+      k_cutoff(false),
       no_learning(opts.get<bool>("no_learning")),
       restart_in_dead_ends(opts.get<bool>("restart_in_dead_ends")),
       always_reevaluate(opts.get<bool>("always_reevaluate")),
@@ -299,9 +299,9 @@ EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) {
     utils::exit_with(utils::ExitCode::CRITICAL_ERROR);
   }
 
-  did_you_change = false;
   auto dead_end_unsafe = false;
   next_best_state_id = StateID::no_state;
+  bfs_lowest_h_value = std::numeric_limits<int>::max();
   while (!open_list->empty()) {
     if (is_time_expired())
       return TIMEOUT;
@@ -343,10 +343,6 @@ EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) {
         continue;
       }
 
-      // if (last_op == nullptr)
-      //   std::cout << "Initial State!\n" << '\n';
-      if (parent_state_id == StateID::no_state)
-        std::cout << "no_state!\n";
       node.open(parent_node, last_op);
 
       if (check_relaxed_plans &&
@@ -379,7 +375,7 @@ EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) {
 
         learning_stagnation_counter = 0;
         current_unsafe_dead_ends.clear();
-        bfs_lowest_h_value = std::numeric_limits<int>::max();
+        // bfs_lowest_h_value = std::numeric_limits<int>::max();
         excluded_states.clear();
         if (d_counts.count(d) == 0)
           d_counts[d] = {0, 0};
@@ -409,7 +405,6 @@ EnforcedHillClimbingSearch::ehc(SearchSpace &current_search_space) {
         return IN_PROGRESS;
       } else {
         if (bfs_lowest_h_value > h) {
-          did_you_change = true;
           next_best_state_id = eval_context.get_state().get_id();
           bfs_lowest_h_value = h;
         }
@@ -543,8 +538,15 @@ auto EnforcedHillClimbingSearch::escape_local_minimum(
         return restart();
       case LearningStagnation::BACKJUMP:
         return restart_in_parent();
-      case LearningStagnation::PROCEED:
-        return proceed_with_no_better_state(current_search_space);
+      case LearningStagnation::PROCEED: {
+        if (next_best_state_id != StateID::no_state) {
+          return proceed_with_no_better_state(current_search_space);
+        }
+        else // next best state id not recorded, keep learning
+        {
+          break;
+        }
+      }
       // return
       default:
         std::cerr << "Unknown Learning Stagnation Option." << std::endl;
@@ -631,20 +633,22 @@ auto EnforcedHillClimbingSearch::proceed_with_no_better_state(
   if (h == EvaluationResult::INFTY)
     return handle_safe_dead_end();
 
-  bfs_lowest_h_value = std::numeric_limits<int>::max();
+  // bfs_lowest_h_value = std::numeric_limits<int>::max();
   auto local_plan = Plan();
   current_search_space.trace_path(
       state_registry.lookup_state(next_best_state_id), local_plan);
   std::cout << local_plan.size() << '\n';
   if (local_plan.size() == 0) {
     // current_search_space.dump();
-
+    for (const auto &state_id : excluded_states) {
+      std::cout << state_id << '\n';
+    }
     std::cout << current_search_space.get_node(state_registry.lookup_state(next_best_state_id)).get_parent_state_id()
               << '\n';
 
     std::cout << std::boolalpha << next_best_state_id
               << current_eval_context.get_state().get_id()
-              << ", " << did_you_change << '\n';
+              << ", " << '\n';
   }
 
   auto current_state = current_eval_context.get_state();
