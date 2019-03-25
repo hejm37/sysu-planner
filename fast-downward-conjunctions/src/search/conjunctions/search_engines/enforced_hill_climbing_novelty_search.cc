@@ -629,7 +629,7 @@ auto EnforcedHillClimbingNoveltySearch::escape_local_minimum(
 
 auto EnforcedHillClimbingNoveltySearch::proceed_with_no_better_state(
     SearchSpace& current_search_space) -> SearchStatus {
-  if (!k_cutoff) return handle_search_space_exhaustion();
+  if (!bfs_cutoff) return handle_search_space_exhaustion();
   ++ehcc_statistics.total_proceed_no_better;
   learning_stagnation_counter = 0;
   auto next_best_context = EvaluationContext(

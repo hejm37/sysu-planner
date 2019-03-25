@@ -80,6 +80,7 @@ private:
 			num_search_space_exhaustion(0),
 			num_dead_ends(0),
 			total_dead_end_backjump_length(0),
+      total_proceed_no_better(0),
 			novelty_timer() {
 			novelty_timer.stop();
 			novelty_timer.reset();
@@ -94,6 +95,7 @@ private:
 		int num_search_space_exhaustion;
 		int num_dead_ends;
 		int total_dead_end_backjump_length;
+    int total_proceed_no_better;
 		utils::Timer novelty_timer;
 
 		auto get_avg_expansions_per_ehc_phase(int num_total_expansions) const -> double {
