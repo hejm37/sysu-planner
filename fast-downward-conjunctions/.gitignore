@@ -4,6 +4,7 @@ builds/
 # Some temp files in local machine
 output
 output.sas
+sas_plan
 testing/
 
 # Ignore tags created by etags, ctags, gtags (GNU global) and cscope
