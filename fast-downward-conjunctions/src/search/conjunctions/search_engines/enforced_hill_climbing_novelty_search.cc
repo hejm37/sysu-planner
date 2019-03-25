@@ -41,6 +41,7 @@ EnforcedHillClimbingNoveltySearch::EnforcedHillClimbingNoveltySearch(
       bfs_bound(opts.get<int>("bfs_bound")),
       learning_stagnation_counter(0),
       heuristic_cache(),
+      next_best_state_id(StateID::no_state),
       bfs_lowest_h_value(std::numeric_limits<int>::max()),
       solved(false),
       bfs_cutoff(false),
@@ -55,6 +56,8 @@ EnforcedHillClimbingNoveltySearch::EnforcedHillClimbingNoveltySearch(
           opts.get<bool>("learning_stagnation_restart")),
       search_space_exhaustion(
           SearchSpaceExhaustion(opts.get_enum("search_space_exhaustion"))),
+      learning_stagnation(
+          LearningStagnation(opts.get_enum("learning_stagnation"))),
       unsafe_pruning_sse(opts.get<bool>("unsafe_pruning_sse")),
       unsafe_pruning_ls(opts.get<bool>("unsafe_pruning_ls")),
       force_unsafe_pruning_complete(
@@ -339,6 +342,8 @@ SearchStatus EnforcedHillClimbingNoveltySearch::ehc(
     }
 
     auto node = current_search_space.get_node(state);
+    next_best_state_id = StateID::no_state;
+    bfs_lowest_h_value = std::numeric_limits<int>::max();
     if (node.is_new()) {
       auto eval_context = EvaluationContext(state, &statistics);
 
@@ -394,7 +399,7 @@ SearchStatus EnforcedHillClimbingNoveltySearch::ehc(
           (h == 0 && test_goal(eval_context.get_state()))) {
         learning_stagnation_counter = 0;
         current_unsafe_dead_ends.clear();
-        bfs_lowest_h_value = std::numeric_limits<int>::max();
+        // bfs_lowest_h_value = std::numeric_limits<int>::max();
         excluded_states.clear();
         if (d_counts.count(d) == 0) d_counts[d] = {0, 0};
         auto& d_pair = d_counts[d];
@@ -421,7 +426,11 @@ SearchStatus EnforcedHillClimbingNoveltySearch::ehc(
 
         return IN_PROGRESS;
       } else {
-        bfs_lowest_h_value = std::min(bfs_lowest_h_value, h);
+        if (bfs_lowest_h_value > h) {
+          next_best_state_id = eval_context.get_state().get_id();
+          bfs_lowest_h_value = h;
+        }
+        // bfs_lowest_h_value = std::min(bfs_lowest_h_value, h);
         expand(eval_context, current_search_space);
       }
     }
@@ -436,7 +445,7 @@ SearchStatus EnforcedHillClimbingNoveltySearch::ehc(
   if (!current_unsafe_dead_ends.empty() && !bfs_cutoff)
     return escape_potential_dead_end();
   current_unsafe_dead_ends.clear();
-  return escape_local_minimum();
+  return escape_local_minimum(current_search_space);
 }
 
 void EnforcedHillClimbingNoveltySearch::update_eval_context(
@@ -499,7 +508,8 @@ auto EnforcedHillClimbingNoveltySearch::evaluate_if_neccessary(
 }
 
 // attempt to escape local minimum by generating conjunctions
-auto EnforcedHillClimbingNoveltySearch::escape_local_minimum() -> SearchStatus {
+auto EnforcedHillClimbingNoveltySearch::escape_local_minimum(
+    SearchSpace& current_search_space) -> SearchStatus {
   ++online_learning_statistics.num_learning_calls;
   ehcc_statistics.total_stagnation_count += learning_stagnation_counter;
   ehcc_statistics.max_stagnation_count = std::max(
@@ -518,13 +528,42 @@ auto EnforcedHillClimbingNoveltySearch::escape_local_minimum() -> SearchStatus {
       auto node = search_space.get_node(current_eval_context.get_state());
       node.mark_as_dead_end();
       statistics.inc_dead_ends();
-      return learning_stagnation_restart ? restart() : escape_dead_end(node);
+      switch (learning_stagnation) {
+        case LearningStagnation::RESTART:
+          return restart();
+        case LearningStagnation::BACKJUMP:
+        case LearningStagnation::PROCEED:
+          return escape_dead_end(node);
+        default:
+          std::cerr << "Unknown Learning Stagnation Option." << std::endl;
+          utils::exit_with(utils::ExitCode::CRITICAL_ERROR);
+      }
+      // return learning_stagnation_restart ? restart() : escape_dead_end(node);
     }
     if (unsafe_pruning_ls) mark_current_state_unsafe_dead_end();
     if (!learning_stagnation_restart) excluded_states.clear();
     if (current_eval_context.get_state().get_id() !=
-        state_registry.get_initial_state().get_id())
-      return learning_stagnation_restart ? restart() : restart_in_parent();
+        state_registry.get_initial_state().get_id()) {
+      switch (learning_stagnation) {
+        case LearningStagnation::RESTART:
+          return restart();
+        case LearningStagnation::BACKJUMP:
+          return restart_in_parent();
+        case LearningStagnation::PROCEED: {
+          if (next_best_state_id != StateID::no_state) {
+            return proceed_with_no_better_state(current_search_space);
+          } else  // next best state id not recorded, keep learning
+          {
+            break;
+          }
+        }
+          // return
+        default:
+          std::cerr << "Unknown Learning Stagnation Option." << std::endl;
+          utils::exit_with(utils::ExitCode::CRITICAL_ERROR);
+      }
+    }
+    // return learning_stagnation_restart ? restart() : restart_in_parent();
   }
 
   ++learning_stagnation_counter;
@@ -585,6 +624,54 @@ auto EnforcedHillClimbingNoveltySearch::escape_local_minimum() -> SearchStatus {
            current_eval_context.get_heuristic_value(heuristic) <=
                bfs_lowest_h_value);
 
+  return IN_PROGRESS;
+}
+
+auto EnforcedHillClimbingNoveltySearch::proceed_with_no_better_state(
+    SearchSpace& current_search_space) -> SearchStatus {
+  if (!k_cutoff) return handle_search_space_exhaustion();
+  ++ehcc_statistics.total_proceed_no_better;
+  learning_stagnation_counter = 0;
+  auto next_best_context = EvaluationContext(
+      state_registry.lookup_state(next_best_state_id), &statistics);
+  auto h = evaluate_if_neccessary(next_best_context);
+  if (h == EvaluationResult::INFTY) return handle_safe_dead_end();
+
+  // bfs_lowest_h_value = std::numeric_limits<int>::max();
+  auto local_plan = Plan();
+  current_search_space.trace_path(
+      state_registry.lookup_state(next_best_state_id), local_plan);
+  std::cout << local_plan.size() << '\n';
+  if (local_plan.size() == 0) {
+    // current_search_space.dump();
+    for (const auto& state_id : excluded_states) {
+      std::cout << state_id << '\n';
+    }
+    std::cout << current_search_space
+                     .get_node(state_registry.lookup_state(next_best_state_id))
+                     .get_parent_state_id()
+              << '\n';
+
+    std::cout << std::boolalpha << next_best_state_id
+              << current_eval_context.get_state().get_id() << ", " << '\n';
+  }
+
+  auto current_state = current_eval_context.get_state();
+  for (const auto op : local_plan) {
+    auto current_parent_node = search_space.get_node(current_state);
+    auto successor = state_registry.get_successor_state(current_state, *op);
+    auto successor_node = search_space.get_node(successor);
+    if (successor_node.is_new()) successor_node.open(current_parent_node, op);
+
+    current_state = successor;
+    current_real_g = successor_node.get_real_g();
+  }
+
+  // did_you_change = false;
+  current_eval_context = next_best_context;
+  open_list->clear();
+  assert(!enable_heuristic_cache ||
+         heuristic_cache.find(next_best_state_id) != std::end(heuristic_cache));
   return IN_PROGRESS;
 }
 
@@ -851,6 +938,16 @@ static auto _parse(OptionParser& parser) -> SearchEngine* {
                   "explored), but may cause the search to fail although there "
                   "is a solution, in which case the unsafe dead ends are reset "
                   "and search is restarted from the initial state."});
+  parser.add_enum_option(
+      "learning_stagnation", {"RESTART", "BACKJUMP", "PROCEED"},
+      "search behavior whenever the learning has stagnated and have exceeded "
+      "the learning_stagnation_threshold, it will do a restart, backjump or "
+      "proceed",
+      "PROCEED", {"Restart search from the initial state.",
+                  "Go back along the current path to the most recent state "
+                  "that does not have an infinite heuristic value.",
+                  "Pick the next best state and perform next BFS phase on it."
+                  ""});
   parser.add_enum_option("preferred_usage",
                          {"PRUNE_BY_PREFERRED", "RANK_PREFERRED_FIRST"},
                          "preferred operator usage", "PRUNE_BY_PREFERRED");
