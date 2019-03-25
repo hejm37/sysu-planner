@@ -1,6 +1,11 @@
 builds/
 *.pyc
 
+# Some temp files in local machine
+output
+output.sas
+testing/
+
 # Ignore tags created by etags, ctags, gtags (GNU global) and cscope
 TAGS
 .TAGS
