@@ -314,6 +314,8 @@ SearchStatus EnforcedHillClimbingNoveltySearch::ehc(
   }
 
   auto dead_end_unsafe = false;
+  next_best_state_id = StateID::no_state;
+  bfs_lowest_h_value = std::numeric_limits<int>::max();
   while (!open_list->empty()) {
     if (is_time_expired()) return TIMEOUT;
 
@@ -342,8 +344,6 @@ SearchStatus EnforcedHillClimbingNoveltySearch::ehc(
     }
 
     auto node = current_search_space.get_node(state);
-    next_best_state_id = StateID::no_state;
-    bfs_lowest_h_value = std::numeric_limits<int>::max();
     if (node.is_new()) {
       auto eval_context = EvaluationContext(state, &statistics);
 
@@ -874,6 +874,9 @@ void EnforcedHillClimbingNoveltySearch::print_statistics() const {
               << " - Avg. Expansions: "
               << static_cast<double>(total_expansions) / phases << std::endl;
   }
+  if (learning_stagnation == LearningStagnation::PROCEED)
+    std::cout << "Number of times to proceed with dfs style: "
+              << ehcc_statistics.total_proceed_no_better << '\n';
 }
 
 static auto _parse(OptionParser& parser) -> SearchEngine* {
