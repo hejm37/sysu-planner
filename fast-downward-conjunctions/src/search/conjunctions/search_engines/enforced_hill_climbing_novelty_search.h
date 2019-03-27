@@ -80,6 +80,7 @@ private:
 			num_search_space_exhaustion(0),
 			num_dead_ends(0),
 			total_dead_end_backjump_length(0),
+      total_proceed_no_better(0),
 			novelty_timer() {
 			novelty_timer.stop();
 			novelty_timer.reset();
@@ -94,6 +95,7 @@ private:
 		int num_search_space_exhaustion;
 		int num_dead_ends;
 		int total_dead_end_backjump_length;
+    int total_proceed_no_better;
 		utils::Timer novelty_timer;
 
 		auto get_avg_expansions_per_ehc_phase(int num_total_expansions) const -> double {
@@ -111,7 +113,9 @@ private:
 	auto evaluate_if_neccessary(EvaluationContext &eval_context, const GlobalState &parent_state, const GlobalOperator &last_op) -> int;
 	auto evaluate_if_neccessary(EvaluationContext &eval_context) -> int;
 
-	auto escape_local_minimum() -> SearchStatus;
+	auto escape_local_minimum(SearchSpace&) -> SearchStatus;
+
+  auto proceed_with_no_better_state(SearchSpace&) -> SearchStatus;
 
 	auto handle_safe_dead_end() -> SearchStatus;
 	auto handle_search_space_exhaustion() -> SearchStatus;
@@ -131,6 +135,7 @@ private:
 
 	void update_eval_context(EvaluationContext &eval_context, const decltype(heuristic_cache)::mapped_type &cache_entry);
 
+  StateID next_best_state_id;
 	int bfs_lowest_h_value;
 	bool solved;
 
@@ -149,8 +154,15 @@ private:
 	enum class SearchSpaceExhaustion {
 		CONTINUE,
 		RESTART,
-		BACKJUMP
+		BACKJUMP,
+    PROCEED
 	} const search_space_exhaustion;
+
+  enum class LearningStagnation {
+    RESTART,
+    BACKJUMP,
+    PROCEED
+  } const learning_stagnation;
 
 	void mark_current_state_unsafe_dead_end();
 

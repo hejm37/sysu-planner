@@ -513,7 +513,7 @@ auto EnforcedHillClimbingSearch::escape_local_minimum(
         case LearningStagnation::RESTART:
           return restart();
         case LearningStagnation::BACKJUMP:
-          return escape_dead_end(node);
+          // return escape_dead_end(node);
         // since it's a dead end, just use backjump
         case LearningStagnation::PROCEED:
           return escape_dead_end(node);
@@ -942,16 +942,6 @@ static auto _parse(OptionParser& parser) -> SearchEngine* {
       "learning_stagnation_restart",
       "do a full restart when learning stagnation is triggered", "false");
   parser.add_enum_option(
-      "learning_stagnation", {"RESTART", "BACKJUMP", "PROCEED"},
-      "search behavior whenever the learning has stagnated and have exceeded "
-      "the learning_stagnation_threshold, it will do a restart, backjump or "
-      "proceed",
-      "PROCEED", {"Restart search from the initial state.",
-                  "Go back along the current path to the most recent state "
-                  "that does not have an infinite heuristic value.",
-                  "Pick the next best state and perform next BFS phase on it."
-                  ""});
-  parser.add_enum_option(
       "search_space_exhaustion", {"CONTINUE", "RESTART", "BACKJUMP"},
       "search behavior whenever the BFS search space is fully explored but "
       "not "
@@ -969,6 +959,16 @@ static auto _parse(OptionParser& parser) -> SearchEngine* {
                   "explored), but may cause the search to fail although there "
                   "is a solution, in which case the unsafe dead ends are reset "
                   "and search is restarted from the initial state."});
+  parser.add_enum_option(
+      "learning_stagnation", {"RESTART", "BACKJUMP", "PROCEED"},
+      "search behavior whenever the learning has stagnated and have exceeded "
+      "the learning_stagnation_threshold, it will do a restart, backjump or "
+      "proceed",
+      "PROCEED", {"Restart search from the initial state.",
+                  "Go back along the current path to the most recent state "
+                  "that does not have an infinite heuristic value.",
+                  "Pick the next best state and perform next BFS phase on it."
+                  ""});
   parser.add_enum_option("preferred_usage",
                          {"PRUNE_BY_PREFERRED", "RANK_PREFERRED_FIRST"},
                          "preferred operator usage", "PRUNE_BY_PREFERRED");
