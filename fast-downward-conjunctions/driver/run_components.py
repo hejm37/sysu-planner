@@ -90,7 +90,7 @@ def run_1_bfws(args):
         "1-bfws", args.translate_inputs, None,
         time_limit, memory_limit)
     ## JM hard code the path of bfws here, need to discuss later
-    bfws = "/home/harry/Desktop/planning/SPARKLE/BFWS-public/fd-version/bfws.py"
+    bfws = "../BFWS-public/fd-version/bfws.py"
     bfws_options = args.translate_inputs + ["dual-1-BFWS"]
     print_callstring(bfws, bfws_options, None)
     call.check_call(
