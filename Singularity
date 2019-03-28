@@ -24,21 +24,20 @@ From:      fedora:latest
     dnf group install -y "Development Tools"
     dnf install -y python gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang scons
 
+%runscript
+    cd /planner/BFWS-public/fd-version
+    scons -j16
+
     ## Build your planner
     cd /planner/fast-downward-conjunctions
-    ./build.py release64 -j4
-
-    cd /planner/BFWS-public/fd-version
-    scons -j4
+    ./build.py release64 -j16
 
     ## Clean up
-    rm -rf /planner/fast-downward-conjunctions/builds/release64/search/CMakeFiles
-    dnf remove -y gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang scons
-    dnf autoremove -y
-    dnf clean all
+#    rm -rf /planner/fast-downward-conjunctions/builds/release64/search/CMakeFiles
+#    dnf remove -y gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang scons
+#    dnf autoremove -y
+#    dnf clean all    
 
-
-%runscript
     ## The runscript is called whenever the container is used to solve
     ## an instance.
 
