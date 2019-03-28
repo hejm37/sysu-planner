@@ -12,7 +12,7 @@ From:      fedora:latest
     cp -r $REPO_ROOT/ $SINGULARITY_ROOTFS/planner
 
 %post
-
+    export LAPKT_PATH=/planner/LAPKT-public
     ## The "%post"-part of this script is called after the container has
     ## been created with the "%setup"-part above and runs "inside the
     ## container". Most importantly, it is used to install dependencies
@@ -67,9 +67,9 @@ From:      fedora:latest
 ## Update the following fields with meta data about your submission.
 ## Please use the same field names and use only one line for each value.
 %labels
-Name        OLCFF
-Description Online-Learning hCFF in EHC with Novelty Pruning and GBFS with Landmarks
-Authors     Maximilian Fickert <fickert@cs.uni-saarland.de> and Jörg Hoffmann <hoffmann@cs.uni-saarland.de>
-SupportsDerivedPredicates no
-SupportsQuantifiedPreconditions no
-SupportsQuantifiedEffects yes
+# Name        OLCFF
+# Description Online-Learning hCFF in EHC with Novelty Pruning and GBFS with Landmarks
+# Authors     Maximilian Fickert <fickert@cs.uni-saarland.de> and Jörg Hoffmann <hoffmann@cs.uni-saarland.de>
+# SupportsDerivedPredicates no
+# SupportsQuantifiedPreconditions no
+# SupportsQuantifiedEffects yes
