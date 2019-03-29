@@ -12,7 +12,7 @@ From:      fedora:latest
     cp -r $REPO_ROOT/ $SINGULARITY_ROOTFS/planner
 
 %post
-
+    export LAPKT_PATH=/planner/LAPKT-public
     ## The "%post"-part of this script is called after the container has
     ## been created with the "%setup"-part above and runs "inside the
     ## container". Most importantly, it is used to install dependencies
@@ -22,24 +22,26 @@ From:      fedora:latest
     ## Install all necessary dependencies.
     dnf upgrade -y
     dnf group install -y "Development Tools"
-    dnf install -y python gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang
+    dnf install -y python gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang scons
+
+%runscript
+    cd /planner/BFWS-public/fd-version
+    scons -j16
 
     ## Build your planner
     cd /planner/fast-downward-conjunctions
-    ./build.py release64clangpgonative -j4
+    ./build.py release64 -j16
 
     ## Clean up
-    rm -rf /planner/fast-downward-conjunctions/builds/release64clangpgonative/search/CMakeFiles
-    dnf remove -y gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang
-    dnf autoremove -y
-    dnf clean all
+#    rm -rf /planner/fast-downward-conjunctions/builds/release64/search/CMakeFiles
+#    dnf remove -y gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang scons
+#    dnf autoremove -y
+#    dnf clean all    
 
-
-%runscript
     ## The runscript is called whenever the container is used to solve
     ## an instance.
 
-    SEED=42
+    SEED=37
 
     DOMAINFILE=$1
     PROBLEMFILE=$2
@@ -47,25 +49,26 @@ From:      fedora:latest
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
-        --build=release64clangpgonative \
+        --dual --build=release64 \
         --plan-file $PLANFILE \
         $DOMAINFILE \
         $PROBLEMFILE \
     --search-options \
     --heuristic "hcff=cff(seed=$SEED, cache_estimates=false, cost_type=ONE)" \
     --heuristic "hn=novelty(cache_estimates=false)" \
-    --heuristic "tmp=novelty_linker(hcff, [hn])" \
-    --heuristic "hlm=lmcount(lm_rhw(reasonable_orders=true, lm_cost_type=ONE), cost_type=ONE)" \
-    --search "ipc18_iterated([ehc_cn(hcff, preferred=hcff, novelty=hn, seed=$SEED, cost_type=ONE, max_growth=8, max_time=180), lazy_greedy_c([hcff, hlm], preferred=[hcff], conjunctions_heuristic=hcff, strategy=maintain_fixed_size_probabilistic(initial_removal_mode=UNTIL_BOUND, base_probability=0.02, target_growth_ratio=1.50), cost_type=ONE)], continue_on_solve=false, continue_on_fail=true, delete_after_phase_heuristics=[hn, tmp], delete_after_phase_phases=[0, 0])" \
-    --translate-options --invariant-generation-max-time 30 \
+    --search "ehc_cn(seed=$SEED, h=hcff, novelty_hn, learning_stagnation=PROCEED, learning_stagnation=1, preferred=hcff, cost_type=ONE, max_growth=8)"
     --preprocess-options --h2_time_limit 30
+
+    #     --heuristic "tmp=novelty_linker(hcff, [hn])" \
+    # --heuristic "hlm=lmcount(lm_rhw(reasonable_orders=true, lm_cost_type=ONE), cost_type=ONE)" \
+    # --search "ipc18_iterated([ehc_cn(hcff, preferred=hcff, novelty=hn, seed=$SEED, cost_type=ONE, max_growth=8, max_time=180), lazy_greedy_c([hcff, hlm], preferred=[hcff], conjunctions_heuristic=hcff, strategy=maintain_fixed_size_probabilistic(initial_removal_mode=UNTIL_BOUND, base_probability=0.02, target_growth_ratio=1.50), cost_type=ONE)], continue_on_solve=false, continue_on_fail=true, delete_after_phase_heuristics=[hn, tmp], delete_after_phase_phases=[0, 0])" \
 
 ## Update the following fields with meta data about your submission.
 ## Please use the same field names and use only one line for each value.
 %labels
-Name        OLCFF
-Description Online-Learning hCFF in EHC with Novelty Pruning and GBFS with Landmarks
-Authors     Maximilian Fickert <fickert@cs.uni-saarland.de> and Jörg Hoffmann <hoffmann@cs.uni-saarland.de>
-SupportsDerivedPredicates no
-SupportsQuantifiedPreconditions no
-SupportsQuantifiedEffects yes
+# Name        OLCFF
+# Description Online-Learning hCFF in EHC with Novelty Pruning and GBFS with Landmarks
+# Authors     Maximilian Fickert <fickert@cs.uni-saarland.de> and Jörg Hoffmann <hoffmann@cs.uni-saarland.de>
+# SupportsDerivedPredicates no
+# SupportsQuantifiedPreconditions no
+# SupportsQuantifiedEffects yes

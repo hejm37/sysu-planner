@@ -82,6 +82,26 @@ def call_component(executable, options, stdin=None,
         [executable] + options,
         stdin=stdin, time_limit=time_limit, memory_limit=memory_limit)
 
+def run_1_bfws(args):
+    logging.info("Running 1-bfws.")
+    ## JM hard code the time_limit & memory_limit here first.
+    time_limit, memory_limit = None, None
+    print_component_settings(
+        "1-bfws", args.translate_inputs, None,
+        time_limit, memory_limit)
+    ## JM hard code the path of bfws here, need to discuss later
+    bfws = "../BFWS-public/fd-version/bfws.py"
+    bfws_options = args.translate_inputs + ["dual-1-BFWS"]
+    print_callstring(bfws, bfws_options, None)
+    call.check_call(
+        [bfws] + bfws_options,
+        time_limit=time_limit, memory_limit=memory_limit)
+    if os.path.getsize('plan.ipc') == 0:
+        os.remove('plan.ipc')
+        return False
+    else:
+        os.rename('plan.ipc', 'sas_plan')
+        return True
 
 def run_translate(args):
     logging.info("Running translator.")

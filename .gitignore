@@ -1,2 +1,5 @@
 builds/
 driver/
+
+fast-downward-conjunctions/execution.details
+*.pyc
