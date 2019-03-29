@@ -62,7 +62,7 @@ From:      fedora:latest
     --heuristic "hcff=cff(seed=$SEED, cache_estimates=false, cost_type=ONE)" \
     --heuristic "hn=novelty(cache_estimates=false)" \
     --search "ehc_cn(seed=$SEED, h=hcff, novelty=hn, learning_stagnation=PROCEED, learning_stagnation=1, preferred=hcff, cost_type=ONE, max_growth=8)"
-    --preprocess-options --h2_time_limit 30
+    # --preprocess-options --h2_time_limit 30
 
     #     --heuristic "tmp=novelty_linker(hcff, [hn])" \
     # --heuristic "hlm=lmcount(lm_rhw(reasonable_orders=true, lm_cost_type=ONE), cost_type=ONE)" \
