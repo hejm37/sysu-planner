@@ -22,21 +22,25 @@ From:      fedora:latest
     ## Install all necessary dependencies.
     dnf upgrade -y
     dnf group install -y "Development Tools"
-    dnf install -y python gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang scons
+    dnf install -y python python-devel gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang scons boost-python
+    # some bug with boost-python
+    ln -s /usr/lib64/libboost_python.so.1.66.0 /usr/lib64/libboost_python.so
 
-%runscript
     cd /planner/BFWS-public/fd-version
-    scons -j16
+    ./build.py -j4
 
     ## Build your planner
     cd /planner/fast-downward-conjunctions
-    ./build.py release64 -j16
+    ./build.py release64 -j4
 
     ## Clean up
-#    rm -rf /planner/fast-downward-conjunctions/builds/release64/search/CMakeFiles
-#    dnf remove -y gcc-c++ cmake boost boost-devel glibc-static libstdc++-static clang scons
-#    dnf autoremove -y
-#    dnf clean all    
+    rm -rf /planner/fast-downward-conjunctions/builds/release64/search/CMakeFiles
+    dnf remove -y gcc-c++ cmake python-devel glibc-static libstdc++-static clang scons
+    dnf autoremove -y
+    dnf clean all
+    rm /usr/lib64/libboost_python.so
+
+%runscript
 
     ## The runscript is called whenever the container is used to solve
     ## an instance.
@@ -46,6 +50,7 @@ From:      fedora:latest
     DOMAINFILE=$1
     PROBLEMFILE=$2
     PLANFILE=$3
+    export BFWS_HOME="/planner/BFWS-public"
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
@@ -56,7 +61,7 @@ From:      fedora:latest
     --search-options \
     --heuristic "hcff=cff(seed=$SEED, cache_estimates=false, cost_type=ONE)" \
     --heuristic "hn=novelty(cache_estimates=false)" \
-    --search "ehc_cn(seed=$SEED, h=hcff, novelty_hn, learning_stagnation=PROCEED, learning_stagnation=1, preferred=hcff, cost_type=ONE, max_growth=8)"
+    --search "ehc_cn(seed=$SEED, h=hcff, novelty=hn, learning_stagnation=PROCEED, learning_stagnation=1, preferred=hcff, cost_type=ONE, max_growth=8)"
     --preprocess-options --h2_time_limit 30
 
     #     --heuristic "tmp=novelty_linker(hcff, [hn])" \

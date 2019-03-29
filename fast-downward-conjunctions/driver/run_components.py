@@ -90,7 +90,10 @@ def run_1_bfws(args):
         "1-bfws", args.translate_inputs, None,
         time_limit, memory_limit)
     ## JM hard code the path of bfws here, need to discuss later
-    bfws = "../BFWS-public/fd-version/bfws.py"
+    BFWS_HOME = os.environ.get('BFWS_HOME')
+    if not BFWS_HOME:
+        sys.exit("Error: BFWS_HOME not set.")
+    bfws = os.path.join(BFWS_HOME, "fd-version/bfws.py")
     bfws_options = args.translate_inputs + ["dual-1-BFWS"]
     print_callstring(bfws, bfws_options, None)
     call.check_call(
