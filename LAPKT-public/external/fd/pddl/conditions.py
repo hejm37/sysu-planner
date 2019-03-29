@@ -222,7 +222,6 @@ class Literal(Condition):
     # Defining __eq__ blocks inheritance of __hash__, so must set it explicitly.
     __hash__ = Condition.__hash__
     parts = []
-    __slots__ = ["predicate", "args", "hash"]
     def __init__(self, predicate, args):
         self.predicate = predicate
         self.args = tuple(args)
@@ -246,9 +245,9 @@ class Literal(Condition):
         return "%s %s(%s)" % (self.__class__.__name__, self.predicate,
                               ", ".join(map(str, self.args)))
     def text( self ) :
-	if len(self.args) == 0 :
-		return "%s"%self.predicate
-        return "%s_%s"%(self.predicate,"_".join(map(str,self.args)))    
+        if len(self.args) == 0 :
+            return "%s"%self.predicate
+        return "%s_%s"%(self.predicate,"_".join(map(str,self.args)))
     def __repr__(self):
         return '<%s>' % self
     def _dump(self):

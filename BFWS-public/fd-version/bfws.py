@@ -61,4 +61,8 @@ def debug():
 
 
 if __name__ == "__main__":
+    print("WOULD YOU REACH HERE?\n\n")
+    print(sys.argv[1])
+    print(sys.argv[2])
+    print(sys.argv[3])
     main(sys.argv[1], sys.argv[2], sys.argv[3])

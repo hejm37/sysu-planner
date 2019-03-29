@@ -5,6 +5,7 @@
 fd-version/testing
 plan.ipc
 execution.details
+fdt
 
 # Compiled Object files
 *.slo
