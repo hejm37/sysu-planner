@@ -50,6 +50,7 @@ From:      fedora:latest
     DOMAINFILE=$1
     PROBLEMFILE=$2
     PLANFILE=$3
+
     export BFWS_HOME="/planner/BFWS-public"
 
     ## Call your planner.
@@ -62,18 +63,13 @@ From:      fedora:latest
     --heuristic "hcff=cff(seed=$SEED, cache_estimates=false, cost_type=ONE)" \
     --heuristic "hn=novelty(cache_estimates=false)" \
     --search "ehc_cn(seed=$SEED, h=hcff, novelty=hn, learning_stagnation=PROCEED, learning_stagnation=1, preferred=hcff, cost_type=ONE, max_growth=8)"
-    # --preprocess-options --h2_time_limit 30
-
-    #     --heuristic "tmp=novelty_linker(hcff, [hn])" \
-    # --heuristic "hlm=lmcount(lm_rhw(reasonable_orders=true, lm_cost_type=ONE), cost_type=ONE)" \
-    # --search "ipc18_iterated([ehc_cn(hcff, preferred=hcff, novelty=hn, seed=$SEED, cost_type=ONE, max_growth=8, max_time=180), lazy_greedy_c([hcff, hlm], preferred=[hcff], conjunctions_heuristic=hcff, strategy=maintain_fixed_size_probabilistic(initial_removal_mode=UNTIL_BOUND, base_probability=0.02, target_growth_ratio=1.50), cost_type=ONE)], continue_on_solve=false, continue_on_fail=true, delete_after_phase_heuristics=[hn, tmp], delete_after_phase_phases=[0, 0])" \
 
 ## Update the following fields with meta data about your submission.
 ## Please use the same field names and use only one line for each value.
 %labels
-# Name        OLCFF
-# Description Online-Learning hCFF in EHC with Novelty Pruning and GBFS with Landmarks
-# Authors     Maximilian Fickert <fickert@cs.uni-saarland.de> and Jörg Hoffmann <hoffmann@cs.uni-saarland.de>
+# Name        BFWS-OLCFF
+# Description 1-BFWS and Online-Learning hCFF with Novelty Pruning and DFS style jumping
+# Authors     Qiping Yang <yangqp5@mail2.sysu.edu.cn>, Jiamin He <hejm37@mail2.sysu.edu.cn> and Hankz HanKui Zhuo <zhuohank@mail.sysu.edu.cn>
 # SupportsDerivedPredicates no
 # SupportsQuantifiedPreconditions no
 # SupportsQuantifiedEffects yes
