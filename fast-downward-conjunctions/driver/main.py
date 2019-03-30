@@ -28,6 +28,7 @@ def main():
 
     # If validation succeeds, exit with the search component's exitcode.
     exitcode = None
+    plan_found = False
 
     for component in args.components:
         try:
@@ -36,15 +37,17 @@ def main():
                     dual_first_found = run_components.run_1_bfws(args)
                     if dual_first_found:
                         print("Plan found by 1-BFWS.")
-                        sys.exit(0)
+                        plan_found = True
                     else:
                         print("Plan not found by 1-BFWS, entering second phase")
                 else:
                     run_components.run_translate(args)
             elif component == "preprocess":
-                run_components.run_preprocess(args)
+                if not plan_found:
+                    run_components.run_preprocess(args)
             elif component == "search":
-                exitcode = run_components.run_search(args)
+                if not plan_found:
+                    exitcode = run_components.run_search(args)
             elif component == "validate":
                 run_components.run_validate(args)
             else:
