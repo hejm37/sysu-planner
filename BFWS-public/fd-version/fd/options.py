@@ -7,6 +7,10 @@ import sys
 def parse_args():
     argparser = argparse.ArgumentParser()
     argparser.add_argument(
+        "domain", help="path to domain pddl file")
+    argparser.add_argument(
+        "task", help="path to task pddl file")
+    argparser.add_argument(
         "--relaxed", dest="generate_relaxed_task", action="store_true",
         help="output relaxed task (no delete effects)")
     argparser.add_argument(
@@ -24,7 +28,7 @@ def parse_args():
         "needed for grounded input files that would otherwise produce "
         "too many candidates.")
     argparser.add_argument(
-        "--invariant-generation-max-time", default=0, type=int,
+        "--invariant-generation-max-time", default=300, type=int,
         help="max time for invariant generation (default: %(default)ds)")
     argparser.add_argument(
         "--add-implied-preconditions", action="store_true",
@@ -35,15 +39,6 @@ def parse_args():
         "--keep-unreachable-facts",
         dest="filter_unreachable_facts", action="store_false",
         help="keep facts that can't be reached from the initial state")
-    argparser.add_argument(
-        "--skip-variable-reordering",
-        dest="reorder_variables", action="store_false",
-        help="do not reorder variables based on the causal graph. Do not use "
-        "this option with the causal graph heuristic!")
-    argparser.add_argument(
-        "--keep-unimportant-variables",
-        dest="filter_unimportant_vars", action="store_false",
-        help="keep variables that do not influence the goal in the causal graph")
     argparser.add_argument(
         "--dump-task", action="store_true",
         help="dump human-readable SAS+ representation of the task")

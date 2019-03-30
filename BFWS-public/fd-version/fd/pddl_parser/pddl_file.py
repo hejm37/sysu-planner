@@ -5,6 +5,8 @@ except ImportError:
     # Python 2.x
     from codecs import open as file_open
 
+from .. import options
+
 from . import lisp_parser
 from . import parsing_functions
 
@@ -25,7 +27,9 @@ def parse_pddl_file(type, filename):
         raise SystemExit("Error: Could not parse %s file: %s\nReason: %s." %
                          (type, filename, e))
 
-def open(domain_filename, task_filename):
+def open(domain_filename=None, task_filename=None):
+    task_filename = task_filename or options.task
+    domain_filename = domain_filename or options.domain
 
     domain_pddl = parse_pddl_file("domain", domain_filename)
     task_pddl = parse_pddl_file("task", task_filename)

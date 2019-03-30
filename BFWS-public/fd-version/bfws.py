@@ -14,7 +14,7 @@ def main(domain_file, problem_file, search_alg):
 
     if search_alg == 'dual-1-BFWS':
         search_alg = '1-BFWS'
-        fd.grounding.dual_translate(domain_file, problem_file, task)
+        fdTask, groups, mutex_groups, translation_key, actions, axioms = fd.grounding.dual_translate(domain_file, problem_file, task)
     else:
         fd.grounding.default(domain_file, problem_file, task)
 
@@ -46,6 +46,10 @@ def main(domain_file, problem_file, search_alg):
     # NIR: And then we're ready to go
     task.solve()
 
+    if os.path.getsize('plan.ipc') == 0:
+        sas_timer = fd.timers.Timer()
+        fd.grounding.translateToSas(fdTask, groups, mutex_groups, translation_key, actions, axioms)
+        print "Output sas file completed in", sas_timer.report(), 'secs'
     # NIR: Comment lines below to deactivate profile
     # profiler_stop()
 

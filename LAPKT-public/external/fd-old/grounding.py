@@ -437,7 +437,7 @@ def dual_translate(domain_file, problem_file, output_task):
 
     with timers.timing("Nomalizing task"):
         normalize.normalize(task)
-
+    
     # JM: It should be noted here that the origin translate process
     # contain 'generate_relaxed_task' option, here I skip it.
     with timers.timing("Instantiating", block=True):

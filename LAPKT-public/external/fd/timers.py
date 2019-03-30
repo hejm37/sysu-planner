@@ -21,9 +21,9 @@ class Timer(object):
         return "[%.3fs CPU, %.3fs wall-clock]" % (
             self._clock() - self.start_clock,
             time.time() - self.start_time)
-
+    
     def report( self ) :
-		return  self._clock() - self.start_clock
+        return  self._clock() - self.start_clock
 
 
 @contextlib.contextmanager

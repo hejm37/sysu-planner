@@ -24,7 +24,7 @@ import instantiate
 import normalize
 import options
 import pddl
-import pddl_parser
+import pddl_file
 import sas_tasks
 import simplify
 import timers
@@ -673,7 +673,7 @@ def dump_statistics(sas_task):
 def main():
     timer = timers.Timer()
     with timers.timing("Parsing", True):
-        task = pddl_parser.open(
+        task = pddl_file.open(
             domain_filename=options.domain, task_filename=options.task)
 
     with timers.timing("Normalizing task"):
