@@ -380,10 +380,6 @@ def dual_translate(domain_file, problem_file, output_task):
         groups, mutex_groups, translation_key = fact_groups.compute_groups(
             task, atoms, reachable_action_params)
 
-    sas_timer = timers.Timer()
-    translateToSas(task, groups, mutex_groups, translation_key, actions, axioms)
-    print("Output sas file completed in ", sas_timer.report(), 'secs')
-
     index = 0
     atom_table = {}
 
@@ -443,3 +439,5 @@ def dual_translate(domain_file, problem_file, output_task):
     output_task.set_init(encode(task.init, atom_table))
     output_task.set_goal(encode(task.goal, atom_table))
     output_task.parsing_time = timer.report()
+
+    return task, groups, mutex_groups, translation_key, actions, axioms
