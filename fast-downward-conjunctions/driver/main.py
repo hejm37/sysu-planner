@@ -9,9 +9,11 @@ from . import aliases
 from . import arguments
 from . import cleanup
 from . import run_components
+from timeit import default_timer as timer
 
 
 def main():
+    start = timer()
     args = arguments.parse_args()
     logging.basicConfig(level=getattr(logging, args.log_level.upper()),
                         format="%(levelname)-8s %(message)s",
@@ -49,6 +51,8 @@ def main():
                 if not plan_found:
                     exitcode = run_components.run_search(args)
             elif component == "validate":
+                end = timer()
+                print("TOTAL TIME:", end - start)
                 run_components.run_validate(args)
             else:
                 assert False
