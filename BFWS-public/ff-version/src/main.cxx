@@ -330,7 +330,7 @@ void report_no_solution( std::string reason, std::ofstream& plan_stream ) {
 }
 
 int main( int argc, char** argv ) {
-
+	float start_time = aptk::time_used();
 	po::variables_map vm;
 
 	process_command_line_options( argc, argv, vm );
@@ -382,7 +382,7 @@ int main( int argc, char** argv ) {
 	std::cout << "Goals_Edges found: " << graph.num_landmarks_and_edges() << std::endl;
 
 	//graph.print( std::cout );       
-
+	std::cout << "Translate time: " << aptk::time_used() - start_time << " s" << std::endl;
 
 	bool found_plan = false;
 	
@@ -570,6 +570,7 @@ int main( int argc, char** argv ) {
 		float bfs_t = do_search( bfs_engine, prob, plan_stream, found_plan );
 		
 		std::cout << "Fast-BFS search completed in " << bfs_t << " secs" << std::endl;
+		std::cout << "TOTAL TIME: " << aptk::time_used() - start_time << " s" << std::endl;
 
 		return 0;
         }

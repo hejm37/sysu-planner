@@ -20,6 +20,8 @@ def main(domain_file, problem_file, search_alg):
     else:
         start = timer()
         fd.grounding.default(domain_file, problem_file, task)
+        end = timer()
+        print "Translate time:", end - start, 's'
 
     # NIR: Uncomment to check what actions are being loaded
     # for i in range( 0, task.num_actions() ) :
