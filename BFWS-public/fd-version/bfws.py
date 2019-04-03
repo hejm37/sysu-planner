@@ -3,6 +3,7 @@ import fd.grounding
 import sys
 import os
 from libbfws import BFWS
+from timeit import default_timer as timer
 # MRJ: Profiler imports
 #from prof import profiler_start, profiler_stop
 
@@ -12,10 +13,12 @@ def main(domain_file, problem_file, search_alg):
 
     task.ignore_action_costs = True
 
-    if search_alg == 'dual-1-BFWS':
+    dual_BFWS = search_alg == 'dual-1-BFWS'
+    if dual_BFWS:
         search_alg = '1-BFWS'
         fdTask, groups, mutex_groups, translation_key, actions, axioms = fd.grounding.dual_translate(domain_file, problem_file, task)
     else:
+        start = timer()
         fd.grounding.default(domain_file, problem_file, task)
 
     # NIR: Uncomment to check what actions are being loaded
@@ -46,10 +49,13 @@ def main(domain_file, problem_file, search_alg):
     # NIR: And then we're ready to go
     task.solve()
 
-    if os.path.getsize('plan.ipc') == 0:
+    if dual_BFWS and os.path.getsize('plan.ipc') == 0:
         sas_timer = fd.timers.Timer()
         fd.grounding.translateToSas(fdTask, groups, mutex_groups, translation_key, actions, axioms)
         print "Output sas file completed in", sas_timer.report(), 'secs'
+    elif not dual_BFWS:
+        end = timer()
+        print "TOTAL TIME:", end - start, 's'
     # NIR: Comment lines below to deactivate profile
     # profiler_stop()
 
