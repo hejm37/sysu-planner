@@ -30,7 +30,7 @@ def main():
 
     # If validation succeeds, exit with the search component's exitcode.
     exitcode = None
-    plan_found = False
+    plan_found, validated = False, False
 
     for component in args.components:
         try:
@@ -52,7 +52,8 @@ def main():
                     exitcode = run_components.run_search(args)
             elif component == "validate":
                 end = timer()
-                print("TOTAL TIME:", end - start)
+                print("TOTAL TIME:", end - start, 's')
+                validated = True
                 run_components.run_validate(args)
             else:
                 assert False
@@ -60,6 +61,9 @@ def main():
             print(err)
             exitcode = err.returncode
             break
+    if not validated:
+        end = timer()
+        print("TOTAL TIME:", end - start, 's')
     sys.exit(exitcode)
 
 
