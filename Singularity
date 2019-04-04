@@ -51,7 +51,7 @@ From:      fedora:latest
     PROBLEMFILE=$2
     PLANFILE=$3
 
-    export BFWS_HOME="/planner/BFWS-public"
+    export BFWS_REPO="/planner/BFWS-public"
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
