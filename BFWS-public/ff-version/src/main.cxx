@@ -349,7 +349,7 @@ int main( int argc, char** argv ) {
 	std::ofstream	plan_stream;
 	
 	if ( !vm.count( "output" ) ) {
-		std::cerr << "No output plan file specified, defaulting to 'plan.ipc'" << std::endl;
+		std::cout << "No output plan file specified, defaulting to 'plan.ipc'" << std::endl;
 		plan_stream.open( "plan.ipc" );
 	}
 	else
