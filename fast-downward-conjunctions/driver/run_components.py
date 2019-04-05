@@ -91,7 +91,7 @@ def run_1_bfws(args):
         time_limit, memory_limit)
     ## JM hard code the path of bfws here, need to discuss later
     BFWS_REPO = os.environ.get('BFWS_REPO')
-    if not BFWS_HOME:
+    if not BFWS_REPO:
         sys.exit("Error: BFWS_REPO not set.")
     bfws = os.path.join(BFWS_REPO, "fd-version/bfws.py")
     bfws_options = args.translate_inputs + ["dual-1-BFWS"]
