@@ -35,13 +35,21 @@ def main():
     for component in args.components:
         try:
             if component == "translate":
-                if args.dual:
-                    dual_first_found = run_components.run_1_bfws(args)
+                if args.dual_fd:
+                    dual_first_found = run_components.run_1_bfws_fd(args)
                     if dual_first_found:
-                        print("Plan found by 1-BFWS.")
+                        print("Plan found by 1-BFWS-fd.")
                         plan_found = True
                     else:
-                        print("Plan not found by 1-BFWS, entering second phase")
+                        print("Plan not found by 1-BFWS-fd, entering second phase")
+                elif args.dual_ff:
+                    dual_first_found = run_components.run_1_bfws_ff(args)
+                    if dual_first_found:
+                        print("Plan found by 1-BFWS-ff.")
+                        plan_found = True
+                    else:
+                        print("Plan not found by 1-BFWS-ff, entering second phase")
+                        run_components.run_translate(args)
                 else:
                     run_components.run_translate(args)
             elif component == "preprocess":
