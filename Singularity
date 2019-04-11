@@ -26,7 +26,7 @@ From:      fedora:latest
     # some bug with boost-python
     ln -s /usr/lib64/libboost_python.so.1.66.0 /usr/lib64/libboost_python.so
 
-	cd /planner/LAPKT-public/externel/libff/
+	cd /planner/LAPKT-public/external/libff/
 	make libff
 
     cd /planner/BFWS-public/ff-version
