@@ -26,8 +26,11 @@ From:      fedora:latest
     # some bug with boost-python
     ln -s /usr/lib64/libboost_python.so.1.66.0 /usr/lib64/libboost_python.so
 
-    cd /planner/BFWS-public/fd-version
-    ./build.py -j4
+	cd /planner/LAPKT-public/externel/libff/
+	make libff
+
+    cd /planner/BFWS-public/ff-version
+    scons -j4
 
     ## Build your planner
     cd /planner/fast-downward-conjunctions
@@ -55,7 +58,7 @@ From:      fedora:latest
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
-        --dual --build=release64 \
+        --dual-ff --build=release64 \
         --plan-file $PLANFILE \
         $DOMAINFILE \
         $PROBLEMFILE \
