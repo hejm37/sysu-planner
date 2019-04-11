@@ -26,8 +26,12 @@ From:      fedora:latest
     # some bug with boost-python
     ln -s /usr/lib64/libboost_python.so.1.66.0 /usr/lib64/libboost_python.so
 
+	yum install -y makedepend flex bison boost-static
+
 	cd /planner/LAPKT-public/external/libff/
-	make libff
+	make clean
+	make depend
+	make
 
     cd /planner/BFWS-public/ff-version
     scons -j4
