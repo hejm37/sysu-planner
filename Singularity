@@ -39,7 +39,7 @@ From:      fedora:latest
     ## Build your planner
     cd /planner/fast-downward-conjunctions
     ./build.py release64 -j4
-    ./build.py profile64 -j4
+    # ./build.py profile64 -j4
 
     ## Clean up
     rm -rf /planner/fast-downward-conjunctions/builds/release64/search/CMakeFiles
