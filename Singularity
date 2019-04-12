@@ -69,7 +69,7 @@ From:      fedora:latest
     --search-options \
     --heuristic "hcff=cff(seed=$SEED, cache_estimates=false, cost_type=ONE)" \
     --heuristic "hn=novelty(cache_estimates=false)" \
-    --search "ehc_cn(seed=$SEED, h=hcff, novelty=hn, learning_stagnation=PROCEED, learning_stagnation=1, preferred=hcff, cost_type=ONE, max_growth=8)"
+    --search "ehc_cn(seed=$SEED, h=hcff, novelty=hn, learning_stagnation=PROCEED, learning_stagnation=1, preferred=hcff, cost_type=ONE, max_growth=infinity)"
 
 ## Update the following fields with meta data about your submission.
 ## Please use the same field names and use only one line for each value.
