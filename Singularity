@@ -9,7 +9,7 @@ From:      fedora:latest
      ## what you are doing and you are certain that you have to do so.
 
     REPO_ROOT=`dirname $SINGULARITY_BUILDDEF`
-    cp -r $REPO_ROOT/ $SINGULARITY_ROOTFS/planner
+    cp -r $REPO_ROOT $SINGULARITY_ROOTFS/planner
 
 %post
     export LAPKT_PATH=/planner/LAPKT-public
@@ -26,19 +26,19 @@ From:      fedora:latest
     # some bug with boost-python
     ln -s /usr/lib64/libboost_python.so.1.66.0 /usr/lib64/libboost_python.so
 
-	yum install -y makedepend flex bison boost-static
+	  yum install -y makedepend flex bison boost-static perf
 
-	cd /planner/LAPKT-public/external/libff/
-	make clean
-	make depend
-	make
+	  cd /planner/LAPKT-public/external/libff/
+	  make clean
+	  make depend
+	  make
 
     cd /planner/BFWS-public/ff-version
     scons -j4
 
     ## Build your planner
     cd /planner/fast-downward-conjunctions
-    ./build.py release64 -j4
+    ./build.py profile64 -j4
 
     ## Clean up
     rm -rf /planner/fast-downward-conjunctions/builds/release64/search/CMakeFiles
@@ -62,7 +62,7 @@ From:      fedora:latest
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
-        --dual-ff --build=release64 \
+        --dual-ff --build=profile64 \
         --plan-file $PLANFILE \
         $DOMAINFILE \
         $PROBLEMFILE \

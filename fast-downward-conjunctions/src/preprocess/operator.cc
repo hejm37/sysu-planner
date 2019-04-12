@@ -178,13 +178,13 @@ void Operator::remove_ambiguity(const H2Mutexes &h2) {
         }
     }
 
-    std::list<std::pair<unsigned, std::list<unsigned>>> candidates;
+    std::vector<std::pair<unsigned, std::vector<unsigned>>> candidates;
     for (int i = 0; i < h2.num_variables(); i++) {
         // consider unknown preconditions only
         if (preconditions[i] != -1)
             continue;
 
-        pair<unsigned, list<unsigned>> candidate_var = make_pair(i, list<unsigned>());
+        pair<unsigned, std::vector<unsigned>> candidate_var = make_pair(i, std::vector<unsigned>());
         // add every reachable fluent
         for (int j = 0; j < h2.num_values(i); j++)
             candidate_var.second.push_back(j);
@@ -196,13 +196,13 @@ void Operator::remove_ambiguity(const H2Mutexes &h2) {
     while (!known_values.empty()) {
         vector<pair<int, int>> aux_values;
         // for each unknown variable
-        for (list<pair<unsigned, list<unsigned>>>::iterator it = candidates.begin(); it != candidates.end();) {
+        for (auto it = candidates.begin(); it != candidates.end();) {
             unsigned var = it->first;
-            list<unsigned> candidate_var = it->second;
+            std::vector<unsigned> candidate_var = it->second;
             // cout << var << " -> " << candidate_var.size() << endl;
 
             // we eliminate candidates mutex with other things
-            for (list<unsigned>::iterator it2 = candidate_var.begin(); it2 != candidate_var.end();) {
+            for (auto it2 = candidate_var.begin(); it2 != candidate_var.end();) {
                 bool mutex = h2.is_unreachable(var, *it2);
                 for (size_t k = 0; !mutex && k < known_values.size(); k++)
                     mutex = h2.are_mutex(known_values[k].first, known_values[k].second, var, *it2);
