@@ -38,7 +38,7 @@ From:      fedora:latest
 
     ## Build your planner
     cd /planner/fast-downward-conjunctions
-    ./build.py profile64 -j4
+    ./build.py release64 -j4
 
     ## Clean up
     rm -rf /planner/fast-downward-conjunctions/builds/release64/search/CMakeFiles
@@ -62,7 +62,7 @@ From:      fedora:latest
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
-        --dual-ff --build=profile64 \
+        --dual-ff --build=release64 \
         --plan-file $PLANFILE \
         $DOMAINFILE \
         $PROBLEMFILE \
