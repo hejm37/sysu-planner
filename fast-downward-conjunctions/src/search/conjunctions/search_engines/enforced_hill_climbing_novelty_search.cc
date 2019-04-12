@@ -641,20 +641,20 @@ auto EnforcedHillClimbingNoveltySearch::proceed_with_no_better_state(
   auto local_plan = Plan();
   current_search_space.trace_path(
       state_registry.lookup_state(next_best_state_id), local_plan);
-  std::cout << local_plan.size() << '\n';
-  if (local_plan.size() == 0) {
-    // current_search_space.dump();
-    for (const auto& state_id : excluded_states) {
-      std::cout << state_id << '\n';
-    }
-    std::cout << current_search_space
-                     .get_node(state_registry.lookup_state(next_best_state_id))
-                     .get_parent_state_id()
-              << '\n';
+  // std::cout << local_plan.size() << '\n';
+  // if (local_plan.size() == 0) {
+  //   // current_search_space.dump();
+  //   for (const auto& state_id : excluded_states) {
+  //     std::cout << state_id << '\n';
+  //   }
+  //   std::cout << current_search_space
+  //                    .get_node(state_registry.lookup_state(next_best_state_id))
+  //                    .get_parent_state_id()
+  //             << '\n';
 
-    std::cout << std::boolalpha << next_best_state_id
-              << current_eval_context.get_state().get_id() << ", " << '\n';
-  }
+  //   std::cout << std::boolalpha << next_best_state_id
+  //             << current_eval_context.get_state().get_id() << ", " << '\n';
+  // }
 
   auto current_state = current_eval_context.get_state();
   for (const auto op : local_plan) {
