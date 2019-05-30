@@ -82,12 +82,12 @@ def call_component(executable, options, stdin=None,
         [executable] + options,
         stdin=stdin, time_limit=time_limit, memory_limit=memory_limit)
 
-def run_1_bfws_fd(args):
-    logging.info("Running 1-bfws-fd.")
+def run_1_bfws(args):
+    logging.info("Running 1-bfws.")
     ## JM hard code the time_limit & memory_limit here first.
     time_limit, memory_limit = None, None
     print_component_settings(
-        "1-bfws-fd", args.translate_inputs, None,
+        "1-bfws", args.translate_inputs, None,
         time_limit, memory_limit)
     ## JM hard code the path of bfws here, need to discuss later
     BFWS_REPO = os.environ.get('BFWS_REPO')
@@ -95,30 +95,6 @@ def run_1_bfws_fd(args):
         sys.exit("Error: BFWS_REPO not set.")
     bfws = os.path.join(BFWS_REPO, "fd-version/bfws.py")
     bfws_options = args.translate_inputs + ["dual-1-BFWS"]
-    print_callstring(bfws, bfws_options, None)
-    call.check_call(
-        [bfws] + bfws_options,
-        time_limit=time_limit, memory_limit=memory_limit)
-    if os.path.getsize('plan.ipc') == 0:
-        os.remove('plan.ipc')
-        return False
-    else:
-        os.rename('plan.ipc', 'sas_plan')
-        return True
-
-def run_1_bfws_ff(args):
-    logging.info("Running 1-bfws-ff.")
-    time_limit, memory_limit = None, None
-    print_component_settings(
-        "1-bfws-ff", args.translate_inputs, None,
-        time_limit, memory_limit)
-    BFWS_REPO = os.environ.get('BFWS_REPO')
-    if not BFWS_REPO:
-        sys.exit("Error: BFWS_REPO not set.")
-    bfws = os.path.join(BFWS_REPO, "ff-version/bfws")
-    bfws_options = ["--domain", args.translate_inputs[0], 
-                "--problem", args.translate_inputs[1],
-                "--1-BFWS", "1"]
     print_callstring(bfws, bfws_options, None)
     call.check_call(
         [bfws] + bfws_options,

@@ -35,6 +35,8 @@ From:      fedora:latest
 
     cd /planner/BFWS-public/ff-version
     scons -j4
+    # cd /planner/BFWS-public/fd-version
+    # ./build.py -j4
 
     ## Build your planner
     cd /planner/fast-downward-conjunctions
@@ -63,7 +65,7 @@ From:      fedora:latest
 
     ## Call your planner.
     /planner/fast-downward-conjunctions/fast-downward.py \
-        --dual-ff --build=release64 \
+        --dual --build=release64 \
         --plan-file $PLANFILE \
         $DOMAINFILE \
         $PROBLEMFILE \

@@ -312,11 +312,8 @@ def parse_args():
         "--search", action="store_true",
         help="run search component")
     parser.add_argument(
-        "--dual-fd", type=bool, nargs='?', const=True, default=False,
-        help="run 1-BFWS-fd before search")
-    parser.add_argument(
-        "--dual-ff", type=bool, nargs='?', const=True, default=False,
-        help="run 1-BFWS-ff before search")
+        "--dual", type=bool, nargs='?', const=True, default=False,
+        help="run 1-BFWS before search")
 
     limits = parser.add_argument_group(
         title="time and memory limits", description=LIMITS_HELP)
