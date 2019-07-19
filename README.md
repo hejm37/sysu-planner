@@ -23,7 +23,7 @@ The source code of the planner contains two part:
 * BFWS-public and its dependency, LAPKT-public
 * fast-downward-conjunctions
 
-Then planner should be invoked in the fast-downward-conjunctions part (using --dual option and it will call BFWS-public/fd-version/bfws.py to perform 1-BFWS, see [the Singularity script](https://github.com/hejm37/sysu-planner/blob/master/Singularity) for more detail).
+Then planner should be invoked in the fast-downward-conjunctions part (using --dual option and it will call BFWS-public/fd-version/bfws.py to perform 1-BFWS, see [the Singularity script](https://github.com/hejm37/sysu-planner/blob/master/Singularity) for more details).
 
 ### Potential Failures
 If the above build has failed, it may appears to be a cmake cache fail. In this case, remove the *builds* (if it exists) directory under fast-downward-conjunctions and rerun the singularity command shall solve the problem.
